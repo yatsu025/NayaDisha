@@ -1,13 +1,36 @@
 "use client"
 
+import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Sidebar } from "@/components/sidebar"
-import { Button } from "@/components/ui/button"
-import { ConfidenceBadge } from "@/components/confidence-badge"
-import { XPBadge } from "@/components/xp-badge"
-import { BookOpen, ArrowRight } from "lucide-react"
+import { supabase } from "@/lib/supabaseClient"
 
 export default function DashboardPage() {
+  const router = useRouter()
+  const [user, setUser] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        router.push("/login")
+      } else {
+        setUser(user)
+      }
+      setLoading(false)
+    }
+    checkUser()
+  }, [router])
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    router.push("/login")
+  }
+
+  if (loading) {
+    return <div className="min-h-screen bg-gray-50 flex items-center justify-center">Loading...</div>
+  }
   const userStats = {
     name: "Alex Johnson",
     confidenceScore: 72,
@@ -26,81 +49,98 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="flex bg-background min-h-screen">
-      <Sidebar />
-
-      <main className="flex-1 ml-64">
-        <div className="p-8">
-          {/* Welcome Section */}
-          <div className="mb-8">
-            <h1 className="font-display text-4xl font-bold text-foreground mb-2">
-              Welcome back, {userStats.name.split(" ")[0]}!
-            </h1>
-            <p className="text-muted-foreground">Here's your learning summary</p>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+          <h1 className="text-2xl font-bold text-[#2956D9]">NayaDisha</h1>
+          <div className="flex items-center gap-4">
+            <Link href="/profile" className="text-gray-600 hover:text-[#2956D9]">Profile</Link>
+            <button onClick={handleLogout} className="text-gray-600 hover:text-red-600">Logout</button>
           </div>
+        </div>
+      </header>
 
-          {/* Stats Grid */}
-          <div className="grid gap-6 md:grid-cols-2 mb-8">
-            {/* Confidence Score */}
-            <div className="rounded-2xl bg-card p-6 ring-1 ring-border">
-              <h2 className="mb-6 font-display font-semibold text-foreground">Your Confidence</h2>
-              <ConfidenceBadge score={userStats.confidenceScore} label="Confidence Score" />
-            </div>
+      <main className="max-w-7xl mx-auto px-4 py-8">
+        {/* Welcome Section */}
+        <div className="mb-8">
+          <h2 className="text-3xl font-bold text-gray-800 mb-2">
+            Welcome back, {user?.user_metadata?.name || user?.email?.split('@')[0]}!
+          </h2>
+          <p className="text-gray-600">Continue your learning journey</p>
+        </div>
 
-            {/* XP Progress */}
-            <div className="rounded-2xl bg-card p-6 ring-1 ring-border">
-              <h2 className="mb-6 font-display font-semibold text-foreground">Experience</h2>
-              <XPBadge xp={userStats.xp} level={userStats.level} />
-            </div>
-          </div>
-
-          {/* Continue Learning */}
-          <div className="mb-8">
-            <div className="rounded-2xl bg-gradient-to-r from-primary/10 to-accent/10 p-8 ring-1 ring-primary/20">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h2 className="mb-2 font-display text-2xl font-bold text-foreground">Continue Learning</h2>
-                  <p className="text-muted-foreground mb-2">{userStats.continueLearning.title}</p>
-                  <div className="mb-4 space-y-1">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Lesson {userStats.continueLearning.lessonNumber}</span>
-                      <span className="font-medium">{userStats.continueLearning.progress}%</span>
-                    </div>
-                    <div className="h-2 w-64 rounded-full bg-muted overflow-hidden">
-                      <div
-                        className="h-full bg-primary transition-all"
-                        style={{ width: `${userStats.continueLearning.progress}%` }}
-                      />
-                    </div>
-                  </div>
+        {/* Stats Grid */}
+        <div className="grid md:grid-cols-2 gap-6 mb-8">
+          {/* Confidence Score */}
+          <div className="bg-white rounded-2xl p-6 shadow-md">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Confidence Score</h3>
+            <div className="flex items-center justify-center">
+              <div className="relative w-32 h-32">
+                <svg className="w-32 h-32 transform -rotate-90">
+                  <circle cx="64" cy="64" r="56" stroke="#e5e7eb" strokeWidth="12" fill="none" />
+                  <circle 
+                    cx="64" 
+                    cy="64" 
+                    r="56" 
+                    stroke="#2956D9" 
+                    strokeWidth="12" 
+                    fill="none"
+                    strokeDasharray={`${72 * 3.51} 351.86`}
+                    strokeLinecap="round"
+                  />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-3xl font-bold text-[#2956D9]">72%</span>
                 </div>
-                <Link href="/lesson/5">
-                  <Button className="gap-2">
-                    Continue
-                    <ArrowRight className="h-4 w-4" />
-                  </Button>
-                </Link>
               </div>
             </div>
           </div>
 
-          {/* Recent Skills */}
-          <div>
-            <h2 className="mb-4 font-display text-xl font-semibold text-foreground">Recent Skills</h2>
-            <div className="space-y-3">
-              {userStats.recentSkills.map((skill, idx) => (
-                <div key={idx} className="flex items-center justify-between rounded-lg bg-card p-4 ring-1 ring-border">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/20">
-                      <BookOpen className="h-5 w-5 text-accent-foreground" />
-                    </div>
-                    <span className="font-medium text-foreground">{skill.title}</span>
-                  </div>
-                  <div className="text-sm font-semibold text-accent">+{skill.xpEarned} XP</div>
-                </div>
-              ))}
+          {/* XP Progress */}
+          <div className="bg-white rounded-2xl p-6 shadow-md">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">XP Progress</h3>
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-600">Level 3</span>
+                <span className="text-[#2956D9] font-bold">2450 XP</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-4">
+                <div className="bg-[#FFC947] h-4 rounded-full" style={{ width: '65%' }}></div>
+              </div>
+              <p className="text-sm text-gray-500">550 XP to Level 4</p>
             </div>
           </div>
+        </div>
+
+        {/* Start Learning Button */}
+        <div className="bg-gradient-to-r from-[#2956D9] to-[#1a3a8a] rounded-2xl p-8 text-white mb-8">
+          <h3 className="text-2xl font-bold mb-2">Ready to Learn?</h3>
+          <p className="mb-6">Continue your skill path and earn more XP</p>
+          <Link href="/skill-path">
+            <button className="bg-[#FFC947] hover:bg-[#e6b33f] text-[#2956D9] font-bold px-8 py-3 rounded-full transition-colors">
+              Start Learning
+            </button>
+          </Link>
+        </div>
+
+        {/* Quick Links */}
+        <div className="grid md:grid-cols-3 gap-6">
+          <Link href="/skill-path" className="bg-white rounded-xl p-6 shadow-md hover:shadow-lg transition-shadow">
+            <div className="text-4xl mb-3">🎯</div>
+            <h4 className="font-semibold text-gray-800 mb-2">Skill Path</h4>
+            <p className="text-gray-600 text-sm">Follow your learning journey</p>
+          </Link>
+          <Link href="/mentor" className="bg-white rounded-xl p-6 shadow-md hover:shadow-lg transition-shadow">
+            <div className="text-4xl mb-3">💬</div>
+            <h4 className="font-semibold text-gray-800 mb-2">AI Mentor</h4>
+            <p className="text-gray-600 text-sm">Get help from your mentor</p>
+          </Link>
+          <Link href="/profile" className="bg-white rounded-xl p-6 shadow-md hover:shadow-lg transition-shadow">
+            <div className="text-4xl mb-3">👤</div>
+            <h4 className="font-semibold text-gray-800 mb-2">Profile</h4>
+            <p className="text-gray-600 text-sm">View your achievements</p>
+          </Link>
         </div>
       </main>
     </div>

@@ -1,13 +1,22 @@
 "use client"
 
-import { useState } from "react"
-import Link from "next/link"
-import { Header } from "@/components/header"
-import { Button } from "@/components/ui/button"
-import { Logo } from "@/components/logo"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { supabase } from "@/lib/supabaseClient"
 
 export default function LandingPage() {
+  const router = useRouter()
   const [language, setLanguage] = useState("en")
+
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        router.push("/dashboard")
+      }
+    }
+    checkUser()
+  }, [router])
 
   const languages = [
     { code: "en", name: "English" },
@@ -17,78 +26,39 @@ export default function LandingPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-card">
-      <Header />
-
-      <main className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
-        <div className="flex flex-col items-center text-center">
-          {/* Language Selector */}
-          <div className="mb-12 flex gap-2">
-            {languages.map((lang) => (
-              <button
-                key={lang.code}
-                onClick={() => setLanguage(lang.code)}
-                className={`rounded-lg px-4 py-2 text-sm font-medium transition-all ${
-                  language === lang.code
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground hover:bg-border"
-                }`}
-              >
-                {lang.name}
-              </button>
-            ))}
-          </div>
-
-          {/* Hero Section */}
-          <div className="mb-12">
-            <Logo />
-          </div>
-
-          <h1 className="mb-4 font-display text-5xl font-bold text-foreground sm:text-6xl">
-            {language === "en" ? "Your Learning Journey Starts Here" : "आपकी सीखने की यात्रा यहाँ शुरू होती है"}
-          </h1>
-
-          <p className="mb-12 max-w-2xl font-display text-xl text-muted-foreground">
-            {language === "en" ? "Har student ke future ko ek nayi disha." : "हर छात्र के भविष्य को एक नई दिशा।"}
+    <div className="min-h-screen bg-gradient-to-br from-[#2956D9] to-[#1a3a8a] flex items-center justify-center p-4">
+      <div className="max-w-2xl w-full text-center">
+        <div className="bg-white rounded-3xl shadow-2xl p-12">
+          <h1 className="text-6xl font-bold text-[#2956D9] mb-4">NayaDisha</h1>
+          <p className="text-2xl text-gray-700 mb-8">
+            Har student ke future ko ek nayi disha.
           </p>
-
-          <Link href="/login">
-            <Button size="lg" className="text-lg">
-              {language === "en" ? "Start Learning" : "सीखना शुरू करें"}
-            </Button>
-          </Link>
-
-          {/* Feature Cards */}
-          <div className="mt-20 grid gap-8 sm:grid-cols-3">
-            {[
-              {
-                icon: "🎯",
-                title: language === "en" ? "Personalized" : "व्यक्तिगत",
-                description: language === "en" ? "Learning tailored for you" : "आपके लिए कस्टमाइज़्ड सीखना",
-              },
-              {
-                icon: "🏆",
-                title: language === "en" ? "Gamified" : "खेल आधारित",
-                description: language === "en" ? "Earn badges and XP" : "बैज और XP अर्जित करें",
-              },
-              {
-                icon: "📈",
-                title: language === "en" ? "Progressive" : "क्रमिक",
-                description: language === "en" ? "Grow at your pace" : "अपनी गति से बढ़ें",
-              },
-            ].map((feature, idx) => (
-              <div
-                key={idx}
-                className="rounded-2xl bg-background p-6 shadow-sm ring-1 ring-border transition-all hover:shadow-md hover:ring-primary"
-              >
-                <div className="mb-3 text-4xl">{feature.icon}</div>
-                <h3 className="mb-2 font-display text-lg font-semibold text-foreground">{feature.title}</h3>
-                <p className="text-muted-foreground">{feature.description}</p>
-              </div>
-            ))}
+          
+          <div className="mb-8">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Select Language
+            </label>
+            <select
+              value={language}
+              onChange={(e) => setLanguage(e.target.value)}
+              className="w-full max-w-xs mx-auto px-4 py-3 rounded-xl border-2 border-gray-300 focus:border-[#2956D9] focus:outline-none"
+            >
+              {languages.map((lang) => (
+                <option key={lang.code} value={lang.code}>
+                  {lang.name}
+                </option>
+              ))}
+            </select>
           </div>
+
+          <button
+            onClick={() => router.push("/login")}
+            className="bg-[#FFC947] hover:bg-[#e6b33f] text-[#2956D9] font-bold text-xl px-12 py-4 rounded-full transition-colors shadow-lg"
+          >
+            Start Learning
+          </button>
         </div>
-      </main>
+      </div>
     </div>
   )
 }

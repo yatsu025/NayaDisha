@@ -1,182 +1,175 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { useRouter, useParams } from "next/navigation"
 import Link from "next/link"
-import { Sidebar } from "@/components/sidebar"
-import { Button } from "@/components/ui/button"
-import { MCQCard } from "@/components/mcq-card"
-import { ArrowLeft, Zap } from "lucide-react"
+import { supabase } from "@/lib/supabaseClient"
 
-export default function QuizPage({ params }: { params: { id: string } }) {
+export default function QuizPage() {
+  const router = useRouter()
+  const params = useParams()
   const [currentQuestion, setCurrentQuestion] = useState(0)
-  const [selectedAnswers, setSelectedAnswers] = useState<Record<number, string>>({})
-  const [showResults, setShowResults] = useState(false)
-  const [xpEarned, setXpEarned] = useState(0)
+  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null)
+  const [showResult, setShowResult] = useState(false)
+  const [score, setScore] = useState(0)
+  const [showXPAnimation, setShowXPAnimation] = useState(false)
+
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        router.push("/login")
+      }
+    }
+    checkUser()
+  }, [router])
 
   const questions = [
     {
-      question: "What is an array in Python?",
+      question: "What is a list in Python?",
       options: [
-        "A collection of elements in contiguous memory",
-        "A single variable that stores one value",
-        "A function that performs calculations",
-        "A method to create loops",
+        "A data structure that stores multiple items",
+        "A single variable",
+        "A function",
+        "A loop"
       ],
-      correct: "A collection of elements in contiguous memory",
-      xp: 50,
+      correct: 0
     },
     {
-      question: "Which method adds an element to the end of a list?",
-      options: ["add()", "append()", "insert()", "extend()"],
-      correct: "append()",
-      xp: 50,
+      question: "How do you add an item to a list?",
+      options: [
+        "list.add(item)",
+        "list.append(item)",
+        "list.insert(item)",
+        "list.push(item)"
+      ],
+      correct: 1
     },
     {
-      question: "How do you access the last element in a Python list?",
-      options: ["list[last]", "list[-1]", "list.last()", "list.end()"],
-      correct: "list[-1]",
-      xp: 50,
-    },
+      question: "Can lists contain duplicate values?",
+      options: [
+        "No, never",
+        "Only numbers",
+        "Yes, always",
+        "Only strings"
+      ],
+      correct: 2
+    }
   ]
 
-  const handleAnswerSelect = (option: string) => {
-    setSelectedAnswers({
-      ...selectedAnswers,
-      [currentQuestion]: option,
-    })
-  }
-
-  const handleSubmitQuestion = () => {
-    const isCorrect = selectedAnswers[currentQuestion] === questions[currentQuestion].correct
-    if (isCorrect) {
-      setXpEarned((prev) => prev + questions[currentQuestion].xp)
+  const handleAnswer = () => {
+    if (selectedAnswer === questions[currentQuestion].correct) {
+      setScore(score + 1)
     }
 
-    if (currentQuestion === questions.length - 1) {
-      setShowResults(true)
+    if (currentQuestion < questions.length - 1) {
+      setCurrentQuestion(currentQuestion + 1)
+      setSelectedAnswer(null)
     } else {
-      setTimeout(() => {
-        setCurrentQuestion(currentQuestion + 1)
-      }, 1000)
+      setShowResult(true)
+      setShowXPAnimation(true)
     }
   }
 
-  const handleReset = () => {
-    setCurrentQuestion(0)
-    setSelectedAnswers({})
-    setShowResults(false)
-    setXpEarned(0)
-  }
-
-  const currentQ = questions[currentQuestion]
-  const isAnswered = selectedAnswers[currentQuestion]
-
-  if (showResults) {
-    const correctCount = Object.entries(selectedAnswers).filter(
-      ([idx, answer]) => questions[Number.parseInt(idx)].correct === answer,
-    ).length
-
+  if (showResult) {
+    const xpEarned = score * 50
     return (
-      <div className="flex bg-background min-h-screen">
-        <Sidebar />
-
-        <main className="flex-1 ml-64">
-          <div className="p-8">
-            <Link href="/dashboard">
-              <Button variant="ghost" className="mb-8 gap-2">
-                <ArrowLeft className="h-4 w-4" />
-                Back to Dashboard
-              </Button>
-            </Link>
-
-            <div className="mx-auto max-w-md text-center">
-              <div className="mb-8 rounded-2xl bg-gradient-to-b from-accent/20 to-accent/5 p-12 ring-1 ring-accent/20">
-                <div className="mb-4 text-6xl">🎉</div>
-                <h1 className="font-display text-3xl font-bold text-foreground mb-2">Quiz Complete!</h1>
-                <p className="text-muted-foreground mb-6">Great job, keep learning!</p>
-
-                <div className="space-y-4 rounded-lg bg-background p-6 ring-1 ring-border">
-                  <div>
-                    <div className="text-sm text-muted-foreground">Score</div>
-                    <div className="text-4xl font-bold text-primary">
-                      {correctCount}/{questions.length}
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-center gap-2 rounded-lg bg-accent/10 p-3">
-                    <Zap className="h-5 w-5 text-accent" />
-                    <span className="font-semibold text-accent-foreground">+{xpEarned} XP Earned</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex gap-3">
-                <Button variant="outline" onClick={handleReset} className="flex-1 bg-transparent">
-                  Retake Quiz
-                </Button>
-                <Link href="/dashboard" className="flex-1">
-                  <Button className="w-full">Back to Dashboard</Button>
-                </Link>
-              </div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="max-w-2xl w-full bg-white rounded-3xl shadow-2xl p-12 text-center">
+          <h1 className="text-4xl font-bold text-[#2956D9] mb-4">Quiz Complete!</h1>
+          <p className="text-2xl text-gray-700 mb-8">
+            You scored {score} out of {questions.length}
+          </p>
+          
+          {showXPAnimation && (
+            <div className="mb-8 animate-bounce">
+              <div className="text-6xl mb-4">🎉</div>
+              <div className="text-3xl font-bold text-[#FFC947]">+{xpEarned} XP</div>
             </div>
+          )}
+
+          <div className="space-y-4">
+            <Link href="/skill-path">
+              <button className="w-full bg-[#2956D9] hover:bg-[#1a3a8a] text-white font-bold px-8 py-4 rounded-full transition-colors">
+                Continue Learning
+              </button>
+            </Link>
+            <Link href="/dashboard">
+              <button className="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 px-8 py-4 rounded-full transition-colors">
+                Back to Dashboard
+              </button>
+            </Link>
           </div>
-        </main>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="flex bg-background min-h-screen">
-      <Sidebar />
-
-      <main className="flex-1 ml-64">
-        <div className="p-8">
-          <Link href={`/lesson/${params.id}`}>
-            <Button variant="ghost" className="mb-8 gap-2">
-              <ArrowLeft className="h-4 w-4" />
-              Back to Lesson
-            </Button>
-          </Link>
-
-          <div className="mx-auto max-w-2xl">
-            <div className="mb-8">
-              <div className="mb-4 flex justify-between">
-                <h1 className="font-display text-3xl font-bold text-foreground">Quiz Time!</h1>
-                <div className="flex items-center gap-2 rounded-lg bg-accent/10 px-4 py-2">
-                  <Zap className="h-5 w-5 text-accent" />
-                  <span className="font-semibold text-accent-foreground">{xpEarned} XP</span>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm text-muted-foreground">
-                  <span>
-                    Question {currentQuestion + 1}/{questions.length}
-                  </span>
-                  <span>{Math.round(((currentQuestion + 1) / questions.length) * 100)}%</span>
-                </div>
-                <div className="h-2 rounded-full bg-muted overflow-hidden">
-                  <div
-                    className="h-full bg-primary transition-all duration-300"
-                    style={{ width: `${((currentQuestion + 1) / questions.length) * 100}%` }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="mb-8 rounded-2xl bg-card p-8 ring-1 ring-border">
-              <MCQCard
-                question={currentQ.question}
-                options={currentQ.options}
-                selectedOption={selectedAnswers[currentQuestion]}
-                onSelect={handleAnswerSelect}
-                showResult={Boolean(isAnswered)}
-                correctOption={currentQ.correct}
-              />
-            </div>
-
-            <Button onClick={handleSubmitQuestion} disabled={!isAnswered} className="w-full" size="lg">
-              {currentQuestion === questions.length - 1 ? "Finish Quiz" : "Next Question"}
-            </Button>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+          <Link href="/dashboard" className="text-2xl font-bold text-[#2956D9]">NayaDisha</Link>
+          <div className="text-gray-600">
+            Question {currentQuestion + 1} of {questions.length}
           </div>
+        </div>
+      </header>
+
+      <main className="max-w-3xl mx-auto px-4 py-12">
+        <div className="bg-white rounded-3xl shadow-xl p-8">
+          {/* Progress Bar */}
+          <div className="mb-8">
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div 
+                className="bg-[#2956D9] h-2 rounded-full transition-all duration-300"
+                style={{ width: `${((currentQuestion + 1) / questions.length) * 100}%` }}
+              ></div>
+            </div>
+          </div>
+
+          {/* Question */}
+          <h2 className="text-2xl font-bold text-gray-800 mb-8">
+            {questions[currentQuestion].question}
+          </h2>
+
+          {/* Options */}
+          <div className="space-y-4 mb-8">
+            {questions[currentQuestion].options.map((option, idx) => (
+              <button
+                key={idx}
+                onClick={() => setSelectedAnswer(idx)}
+                className={`w-full text-left p-4 rounded-xl border-2 transition-all ${
+                  selectedAnswer === idx
+                    ? "border-[#2956D9] bg-blue-50"
+                    : "border-gray-300 hover:border-[#2956D9]"
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                    selectedAnswer === idx ? "border-[#2956D9] bg-[#2956D9]" : "border-gray-300"
+                  }`}>
+                    {selectedAnswer === idx && <div className="w-3 h-3 bg-white rounded-full"></div>}
+                  </div>
+                  <span className="text-gray-700">{option}</span>
+                </div>
+              </button>
+            ))}
+          </div>
+
+          {/* Submit Button */}
+          <button
+            onClick={handleAnswer}
+            disabled={selectedAnswer === null}
+            className={`w-full font-bold px-8 py-4 rounded-full transition-colors ${
+              selectedAnswer !== null
+                ? "bg-[#FFC947] hover:bg-[#e6b33f] text-[#2956D9]"
+                : "bg-gray-300 text-gray-500 cursor-not-allowed"
+            }`}
+          >
+            {currentQuestion < questions.length - 1 ? "Next Question" : "Finish Quiz"}
+          </button>
         </div>
       </main>
     </div>
