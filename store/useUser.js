@@ -47,14 +47,19 @@ export const useUser = create((set, get) => ({
 
     const { error } = await supabase
       .from('users')
-      .update(updates)
+      .update({ ...updates, updated_at: new Date().toISOString() })
       .eq('id', user.id)
 
     if (!error) {
       set(state => ({
         profile: { ...state.profile, ...updates }
       }))
+      
+      // Refresh user data to get latest updates
+      get().fetchUser()
     }
+    
+    return { error }
   },
 
   updateTokens: (newTokens) => {

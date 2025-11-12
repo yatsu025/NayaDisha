@@ -3,145 +3,282 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { motion } from "framer-motion"
 import { supabase } from "@/lib/supabaseClient"
+import { useUser } from "@/store/useUser"
+import Navbar from "@/components/Navbar"
+import XPProgressBar from "@/components/XPProgressBar"
+import { availableSkills } from "@/utils/skills"
 
 export default function DashboardPage() {
   const router = useRouter()
-  const [user, setUser] = useState<any>(null)
+  const { user, profile, tokens, fetchUser } = useUser()
   const [loading, setLoading] = useState(true)
+  const [stats, setStats] = useState({
+    completedLessons: 0,
+    totalXP: 0,
+    badges: []
+  })
 
   useEffect(() => {
-    const checkUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        router.push("/login")
-      } else {
-        setUser(user)
-      }
-      setLoading(false)
-    }
-    checkUser()
-  }, [router])
+    checkAuth()
+  }, [])
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
-    router.push("/login")
+  const checkAuth = async () => {
+    await fetchUser()
+    setLoading(false)
+  }
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push("/login")
+    } else if (!loading && profile && !profile.profile_complete) {
+      router.push("/onboarding")
+    } else if (!loading && profile) {
+      fetchStats()
+    }
+  }, [loading, user, profile])
+
+  const fetchStats = async () => {
+    if (!profile) return
+
+    // Fetch completed lessons
+    const { data: progress } = await supabase
+      .from('user_progress')
+      .select('*')
+      .eq('user_id', profile.id)
+      .eq('completed', true)
+
+    setStats({
+      completedLessons: progress?.length || 0,
+      totalXP: profile.xp || 0,
+      badges: profile.badges || []
+    })
   }
 
   if (loading) {
-    return <div className="min-h-screen bg-gray-50 flex items-center justify-center">Loading...</div>
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2956D9] mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    )
   }
-  const userStats = {
-    name: "Alex Johnson",
-    confidenceScore: 72,
-    xp: 2450,
-    level: 3,
-    continueLearning: {
-      title: "Advanced Python",
-      progress: 65,
-      lessonNumber: 5,
+
+  const sections = [
+    {
+      title: "Priority Skills",
+      description: "Focus on mastering your priority skills",
+      icon: "⭐",
+      color: "from-blue-500 to-blue-600",
+      href: "/priority",
+      stats: `${profile?.priority_skills?.length || 0} skills`
     },
-    recentSkills: [
-      { title: "Web Development", xpEarned: 250 },
-      { title: "Data Structures", xpEarned: 180 },
-      { title: "JavaScript Basics", xpEarned: 150 },
-    ],
-  }
+    {
+      title: "Learn Later",
+      description: "Skills you want to explore next",
+      icon: "📚",
+      color: "from-purple-500 to-purple-600",
+      href: "/unpriority",
+      stats: `${profile?.unpriority_skills?.length || 0} skills`
+    },
+    {
+      title: "Game Zone",
+      description: "Practice and earn XP through games",
+      icon: "🎮",
+      color: "from-green-500 to-green-600",
+      href: "/game",
+      stats: "Play now"
+    },
+    {
+      title: "AI Mentor",
+      description: "Get personalized guidance",
+      icon: "🧠",
+      color: "from-orange-500 to-orange-600",
+      href: "/mentor",
+      stats: `${tokens} tokens`
+    }
+  ]
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-[#2956D9]">NayaDisha</h1>
-          <div className="flex items-center gap-4">
-            <Link href="/profile" className="text-gray-600 hover:text-[#2956D9]">Profile</Link>
-            <button onClick={handleLogout} className="text-gray-600 hover:text-red-600">Logout</button>
-          </div>
-        </div>
-      </header>
+      <Navbar />
 
       <main className="max-w-7xl mx-auto px-4 py-8">
         {/* Welcome Section */}
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold text-gray-800 mb-2">
-            Welcome back, {user?.user_metadata?.name || user?.email?.split('@')[0]}!
-          </h2>
-          <p className="text-gray-600">Continue your learning journey</p>
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8"
+        >
+          <h1 className="text-4xl font-bold text-gray-800 mb-2">
+            Welcome back, {profile?.name || 'Learner'}! 👋
+          </h1>
+          <p className="text-gray-600 text-lg">
+            Continue your learning journey
+          </p>
+        </motion.div>
+
+        {/* XP Progress */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="bg-white rounded-2xl shadow-md p-6 mb-8"
+        >
+          <XPProgressBar xp={profile?.xp || 0} level={profile?.level || 1} />
+        </motion.div>
+
+        {/* Stats Cards */}
+        <div className="grid md:grid-cols-3 gap-6 mb-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="bg-white rounded-2xl shadow-md p-6"
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-2xl">
+                📖
+              </div>
+              <div>
+                <p className="text-gray-600 text-sm">Lessons Completed</p>
+                <p className="text-3xl font-bold text-gray-800">{stats.completedLessons}</p>
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="bg-white rounded-2xl shadow-md p-6"
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center text-2xl">
+                🏆
+              </div>
+              <div>
+                <p className="text-gray-600 text-sm">Badges Earned</p>
+                <p className="text-3xl font-bold text-gray-800">{stats.badges.length}</p>
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="bg-white rounded-2xl shadow-md p-6"
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center text-2xl">
+                📊
+              </div>
+              <div>
+                <p className="text-gray-600 text-sm">Confidence Score</p>
+                <p className="text-3xl font-bold text-gray-800">{profile?.confidence_score || 50}%</p>
+              </div>
+            </div>
+          </motion.div>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid md:grid-cols-2 gap-6 mb-8">
-          {/* Confidence Score */}
-          <div className="bg-white rounded-2xl p-6 shadow-md">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">Confidence Score</h3>
-            <div className="flex items-center justify-center">
-              <div className="relative w-32 h-32">
-                <svg className="w-32 h-32 transform -rotate-90">
-                  <circle cx="64" cy="64" r="56" stroke="#e5e7eb" strokeWidth="12" fill="none" />
-                  <circle 
-                    cx="64" 
-                    cy="64" 
-                    r="56" 
-                    stroke="#2956D9" 
-                    strokeWidth="12" 
-                    fill="none"
-                    strokeDasharray={`${72 * 3.51} 351.86`}
-                    strokeLinecap="round"
-                  />
-                </svg>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-3xl font-bold text-[#2956D9]">72%</span>
+        {/* Skills Overview */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="bg-white rounded-2xl shadow-md p-6 mb-8"
+        >
+          <h3 className="text-xl font-bold text-gray-800 mb-4">🎯 Your Learning Focus</h3>
+          <div className="grid md:grid-cols-2 gap-6">
+            <div>
+              <h4 className="font-semibold text-blue-700 mb-2">Priority Skills ({profile?.priority_skills?.length || 0})</h4>
+              <div className="flex flex-wrap gap-2">
+                {(profile?.priority_skills || []).slice(0, 3).map((skillId: string) => {
+                  const skill = availableSkills.find(s => s.id === skillId)
+                  return skill ? (
+                    <span key={skillId} className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
+                      {skill.icon} {skill.name}
+                    </span>
+                  ) : null
+                })}
+                {(profile?.priority_skills?.length || 0) > 3 && (
+                  <span className="bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-sm">
+                    +{(profile?.priority_skills?.length || 0) - 3} more
+                  </span>
+                )}
+              </div>
+            </div>
+            <div>
+              <h4 className="font-semibold text-purple-700 mb-2">Learning Later ({profile?.unpriority_skills?.length || 0})</h4>
+              <div className="flex flex-wrap gap-2">
+                {(profile?.unpriority_skills || []).slice(0, 3).map((skillId: string) => {
+                  const skill = availableSkills.find(s => s.id === skillId)
+                  return skill ? (
+                    <span key={skillId} className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm">
+                      {skill.icon} {skill.name}
+                    </span>
+                  ) : null
+                })}
+                {(profile?.unpriority_skills?.length || 0) > 3 && (
+                  <span className="bg-purple-50 text-purple-600 px-3 py-1 rounded-full text-sm">
+                    +{(profile?.unpriority_skills?.length || 0) - 3} more
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Main Sections */}
+        <div className="grid md:grid-cols-2 gap-6">
+          {sections.map((section, index) => (
+            <motion.div
+              key={section.href}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6 + index * 0.1 }}
+            >
+              <Link href={section.href}>
+                <div className={`bg-gradient-to-br ${section.color} rounded-2xl shadow-lg p-8 text-white hover:scale-105 transition-transform cursor-pointer`}>
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="text-6xl">{section.icon}</div>
+                    <div className="bg-white/20 px-3 py-1 rounded-full text-sm">
+                      {section.stats}
+                    </div>
+                  </div>
+                  <h3 className="text-2xl font-bold mb-2">{section.title}</h3>
+                  <p className="text-white/90">{section.description}</p>
+                  <div className="mt-4 flex items-center gap-2 text-sm font-semibold">
+                    <span>Explore</span>
+                    <span>→</span>
+                  </div>
                 </div>
-              </div>
-            </div>
-          </div>
-
-          {/* XP Progress */}
-          <div className="bg-white rounded-2xl p-6 shadow-md">
-            <h3 className="text-lg font-semibold text-gray-800 mb-4">XP Progress</h3>
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600">Level 3</span>
-                <span className="text-[#2956D9] font-bold">2450 XP</span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-4">
-                <div className="bg-[#FFC947] h-4 rounded-full" style={{ width: '65%' }}></div>
-              </div>
-              <p className="text-sm text-gray-500">550 XP to Level 4</p>
-            </div>
-          </div>
+              </Link>
+            </motion.div>
+          ))}
         </div>
 
-        {/* Start Learning Button */}
-        <div className="bg-gradient-to-r from-[#2956D9] to-[#1a3a8a] rounded-2xl p-8 text-white mb-8">
-          <h3 className="text-2xl font-bold mb-2">Ready to Learn?</h3>
-          <p className="mb-6">Continue your skill path and earn more XP</p>
-          <Link href="/skill-path">
-            <button className="bg-[#FFC947] hover:bg-[#e6b33f] text-[#2956D9] font-bold px-8 py-3 rounded-full transition-colors">
-              Start Learning
+        {/* Recent Activity */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.9 }}
+          className="mt-8 bg-white rounded-2xl shadow-md p-6"
+        >
+          <h3 className="text-xl font-bold text-gray-800 mb-4">🔥 Keep Learning!</h3>
+          <p className="text-gray-600 mb-4">
+            You're making great progress! Continue with your priority skills to unlock more badges and level up faster.
+          </p>
+          <Link href="/priority">
+            <button className="bg-[#2956D9] hover:bg-[#1a3a8a] text-white font-bold px-6 py-3 rounded-full transition-colors">
+              Continue Learning →
             </button>
           </Link>
-        </div>
-
-        {/* Quick Links */}
-        <div className="grid md:grid-cols-3 gap-6">
-          <Link href="/skill-path" className="bg-white rounded-xl p-6 shadow-md hover:shadow-lg transition-shadow">
-            <div className="text-4xl mb-3">🎯</div>
-            <h4 className="font-semibold text-gray-800 mb-2">Skill Path</h4>
-            <p className="text-gray-600 text-sm">Follow your learning journey</p>
-          </Link>
-          <Link href="/mentor" className="bg-white rounded-xl p-6 shadow-md hover:shadow-lg transition-shadow">
-            <div className="text-4xl mb-3">💬</div>
-            <h4 className="font-semibold text-gray-800 mb-2">AI Mentor</h4>
-            <p className="text-gray-600 text-sm">Get help from your mentor</p>
-          </Link>
-          <Link href="/profile" className="bg-white rounded-xl p-6 shadow-md hover:shadow-lg transition-shadow">
-            <div className="text-4xl mb-3">👤</div>
-            <h4 className="font-semibold text-gray-800 mb-2">Profile</h4>
-            <p className="text-gray-600 text-sm">View your achievements</p>
-          </Link>
-        </div>
+        </motion.div>
       </main>
     </div>
   )
