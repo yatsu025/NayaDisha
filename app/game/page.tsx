@@ -57,6 +57,38 @@ export default function GamePage() {
     }
   }, [loading, user, router])
 
+  // 🔥 REALTIME: Listen to XP updates
+  useEffect(() => {
+    if (!profile?.id) return
+
+    const xpChannel = supabase
+      .channel('xp-realtime-game')
+      .on(
+        'postgres_changes',
+        { 
+          event: 'UPDATE', 
+          schema: 'public', 
+          table: 'users',
+          filter: `id=eq.${profile.id}`
+        },
+        (payload) => {
+          console.log('🔥 Realtime XP update:', payload.new)
+          const newData = payload.new as any
+          if (newData.xp !== profile.xp) {
+            // Show XP gain animation
+            setShowXPAnimation(true)
+            setTimeout(() => setShowXPAnimation(false), 2000)
+            fetchUser() // Refresh user data
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(xpChannel)
+    }
+  }, [profile?.id, profile?.xp])
+
   const handleAnswer = async () => {
     const question = quizQuestions[currentQuestion]
     const isCorrect = selectedAnswer === question.correct

@@ -38,6 +38,37 @@ export default function ProfilePage() {
     }
   }, [loading, user, router, profile])
 
+  // 🔥 REALTIME: Listen to profile updates
+  useEffect(() => {
+    if (!profile?.id) return
+
+    const profileChannel = supabase
+      .channel('profile-realtime')
+      .on(
+        'postgres_changes',
+        { 
+          event: 'UPDATE', 
+          schema: 'public', 
+          table: 'users',
+          filter: `id=eq.${profile.id}`
+        },
+        (payload) => {
+          console.log('🔥 Realtime profile update:', payload.new)
+          fetchUser() // Auto-refresh profile data
+          if (!editingSkills) {
+            // Update temp skills if not currently editing
+            setTempPrioritySkills((payload.new as any).priority_skills || [])
+            setTempUnprioritySkills((payload.new as any).unpriority_skills || [])
+          }
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(profileChannel)
+    }
+  }, [profile?.id, editingSkills])
+
   const handleLanguageChange = async (newLang: string) => {
     const lang = getLanguages().find((l: any) => l.code === newLang)
     if (lang && profile) {

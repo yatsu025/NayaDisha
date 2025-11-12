@@ -39,6 +39,51 @@ export default function MentorPage() {
     }
   }, [loading, user, profile])
 
+  // 🔥 REALTIME: Listen to token updates
+  useEffect(() => {
+    if (!profile?.id) return
+
+    const tokenChannel = supabase
+      .channel('token-realtime-mentor')
+      .on(
+        'postgres_changes',
+        { 
+          event: 'UPDATE', 
+          schema: 'public', 
+          table: 'user_tokens',
+          filter: `user_id=eq.${profile.id}`
+        },
+        (payload) => {
+          console.log('🔥 Realtime token update:', payload.new)
+          fetchUser() // Refresh to get new token count
+        }
+      )
+      .subscribe()
+
+    // 🔥 REALTIME: Listen to new mentor requests
+    const mentorChannel = supabase
+      .channel('mentor-realtime')
+      .on(
+        'postgres_changes',
+        { 
+          event: 'INSERT', 
+          schema: 'public', 
+          table: 'mentor_requests',
+          filter: `user_id=eq.${profile.id}`
+        },
+        (payload) => {
+          console.log('🔥 Realtime mentor request:', payload.new)
+          loadMentorHistory() // Refresh chat history
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(tokenChannel)
+      supabase.removeChannel(mentorChannel)
+    }
+  }, [profile?.id])
+
   const loadMentorHistory = async () => {
     if (!profile) return
 
