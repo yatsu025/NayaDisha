@@ -3,124 +3,206 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { motion } from "framer-motion"
 import { supabase } from "@/lib/supabaseClient"
+import { useUser } from "@/store/useUser"
+import { useLanguage } from "@/store/useLanguage"
+import Navbar from "@/components/Navbar"
+import { getSkillsByIds } from "@/utils/skills"
 
 export default function ProfilePage() {
   const router = useRouter()
-  const [user, setUser] = useState<any>(null)
+  const { user, profile, tokens, fetchUser, logout } = useUser()
+  const { language, getLanguages, setLanguage } = useLanguage()
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const checkUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        router.push("/login")
-      } else {
-        setUser(user)
-      }
-      setLoading(false)
-    }
-    checkUser()
-  }, [router])
+    checkAuth()
+  }, [])
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut()
-    router.push("/login")
+  const checkAuth = async () => {
+    await fetchUser()
+    setLoading(false)
+  }
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push("/login")
+    }
+  }, [loading, user, router])
+
+  const handleLanguageChange = async (newLang: string) => {
+    const lang = getLanguages().find((l: any) => l.code === newLang)
+    if (lang && profile) {
+      setLanguage(lang.code, lang.name)
+      await supabase
+        .from('users')
+        .update({ language: lang.code })
+        .eq('id', profile.id)
+    }
   }
 
   if (loading) {
-    return <div className="min-h-screen bg-gray-50 flex items-center justify-center">Loading...</div>
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2956D9]"></div>
+      </div>
+    )
   }
 
-  const profile = {
-    name: user?.user_metadata?.name || user?.email?.split('@')[0] || "User",
-    email: user?.email || "",
-    joinDate: new Date(user?.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
-    avatar: (user?.user_metadata?.name || user?.email?.split('@')[0] || "U").substring(0, 2).toUpperCase(),
-    stats: [
-      { label: "Total XP", value: "2,450" },
-      { label: "Current Level", value: "3" },
-      { label: "Skills Learned", value: "12" },
-    ],
-    skills: [
-      { name: "Python", proficiency: 85 },
-      { name: "Data Structures", proficiency: 72 },
-      { name: "Web Development", proficiency: 68 },
-      { name: "Problem Solving", proficiency: 76 },
-    ],
-  }
+  const stats = [
+    { label: "Total XP", value: profile?.xp || 0, icon: "⚡" },
+    { label: "Current Level", value: profile?.level || 1, icon: "🏆" },
+    { label: "Tokens", value: tokens, icon: "🪙" },
+    { label: "Confidence", value: `${profile?.confidence_score || 50}%`, icon: "📊" }
+  ]
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-          <Link href="/dashboard" className="text-2xl font-bold text-[#2956D9]">NayaDisha</Link>
-          <div className="flex items-center gap-4">
-            <Link href="/dashboard" className="text-gray-600 hover:text-[#2956D9]">Dashboard</Link>
-            <button onClick={handleLogout} className="text-gray-600 hover:text-red-600">Logout</button>
-          </div>
-        </div>
-      </header>
+      <Navbar />
 
-      <main className="max-w-5xl mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold text-gray-800 mb-8">Your Profile</h1>
+      <main className="max-w-6xl mx-auto px-4 py-8">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8"
+        >
+          <h1 className="text-4xl font-bold text-gray-800 mb-2">👤 Your Profile</h1>
+          <p className="text-gray-600">Manage your account and track your progress</p>
+        </motion.div>
 
-        {/* Profile Header */}
-        <div className="bg-white rounded-2xl p-8 shadow-md mb-8">
-          <div className="flex items-center gap-6 mb-6">
-            <div className="w-24 h-24 rounded-full bg-[#2956D9] text-white flex items-center justify-center text-3xl font-bold">
-              {profile.avatar}
+        {/* Profile Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="bg-white rounded-3xl shadow-xl p-8 mb-8"
+        >
+          <div className="flex flex-col md:flex-row items-center gap-6">
+            <div className="w-32 h-32 rounded-full bg-gradient-to-br from-[#2956D9] to-[#4a7de8] text-white flex items-center justify-center text-5xl font-bold shadow-lg">
+              {profile?.name?.substring(0, 2).toUpperCase() || "U"}
             </div>
-            <div>
-              <h2 className="text-2xl font-bold text-gray-800">{profile.name}</h2>
-              <p className="text-gray-600">{profile.email}</p>
-              <p className="text-sm text-gray-500 mt-1">Joined {profile.joinDate}</p>
+            <div className="flex-1 text-center md:text-left">
+              <h2 className="text-3xl font-bold text-gray-800 mb-2">{profile?.name || "User"}</h2>
+              <p className="text-gray-600 mb-1">{profile?.email}</p>
+              <p className="text-sm text-gray-500">
+                Joined {new Date(profile?.joined_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+              </p>
             </div>
+            <button
+              onClick={logout}
+              className="bg-red-500 hover:bg-red-600 text-white font-bold px-6 py-3 rounded-full transition-colors"
+            >
+              Logout
+            </button>
           </div>
-        </div>
+        </motion.div>
 
         {/* Stats Grid */}
-        <div className="grid md:grid-cols-3 gap-6 mb-8">
-          {profile.stats.map((stat, idx) => (
-            <div key={idx} className="bg-white rounded-xl p-6 shadow-md text-center">
-              <div className="text-3xl font-bold text-[#2956D9] mb-2">{stat.value}</div>
-              <div className="text-gray-600">{stat.label}</div>
-            </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
+          {stats.map((stat, idx) => (
+            <motion.div
+              key={idx}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 + idx * 0.1 }}
+              className="bg-white rounded-2xl p-6 shadow-md text-center"
+            >
+              <div className="text-4xl mb-2">{stat.icon}</div>
+              <div className="text-3xl font-bold text-[#2956D9] mb-1">{stat.value}</div>
+              <div className="text-gray-600 text-sm">{stat.label}</div>
+            </motion.div>
           ))}
         </div>
 
-        {/* Skills Section */}
-        <div className="bg-white rounded-2xl p-8 shadow-md">
-          <h3 className="text-xl font-bold text-gray-800 mb-6">Your Skills</h3>
-          <div className="space-y-6">
-            {profile.skills.map((skill, idx) => (
-              <div key={idx}>
-                <div className="flex justify-between mb-2">
-                  <span className="font-semibold text-gray-800">{skill.name}</span>
-                  <span className="text-gray-600">{skill.proficiency}%</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-3">
-                  <div 
-                    className="bg-[#2956D9] h-3 rounded-full transition-all" 
-                    style={{ width: `${skill.proficiency}%` }}
-                  ></div>
-                </div>
-              </div>
+        {/* Language Settings */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+          className="bg-white rounded-2xl shadow-md p-8 mb-8"
+        >
+          <h3 className="text-xl font-bold text-gray-800 mb-4">🌐 Language Preference</h3>
+          <select
+            value={profile?.language || language}
+            onChange={(e) => handleLanguageChange(e.target.value)}
+            className="w-full md:w-auto px-4 py-3 rounded-xl border-2 border-gray-300 focus:border-[#2956D9] focus:outline-none"
+          >
+            {getLanguages().map((lang: any) => (
+              <option key={lang.code} value={lang.code}>
+                {lang.native} ({lang.name})
+              </option>
             ))}
-          </div>
-        </div>
+          </select>
+          <p className="text-sm text-gray-500 mt-2">
+            All lessons will be translated to your preferred language
+          </p>
+        </motion.div>
 
-        {/* Progress Section */}
-        <div className="mt-8 bg-gradient-to-r from-[#2956D9] to-[#1a3a8a] rounded-2xl p-8 text-white">
-          <h3 className="text-2xl font-bold mb-4">Keep Learning!</h3>
-          <p className="mb-6">You're making great progress. Continue your journey to unlock more skills and achievements.</p>
-          <Link href="/skill-path">
-            <button className="bg-[#FFC947] hover:bg-[#e6b33f] text-[#2956D9] font-bold px-8 py-3 rounded-full transition-colors">
-              Continue Learning
+        {/* Skills Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.7 }}
+          className="bg-white rounded-2xl shadow-md p-8 mb-8"
+        >
+          <h3 className="text-xl font-bold text-gray-800 mb-6">🎯 Your Learning Skills</h3>
+          
+          <div className="mb-6">
+            <h4 className="font-semibold text-gray-700 mb-3">Priority Skills:</h4>
+            <div className="flex flex-wrap gap-3">
+              {getSkillsByIds(profile?.priority_skills || []).map((skill: any) => (
+                <div key={skill.id} className="flex items-center gap-2 bg-blue-50 px-4 py-2 rounded-full">
+                  <span className="text-2xl">{skill.icon}</span>
+                  <span className="font-semibold text-gray-800">{skill.name}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <h4 className="font-semibold text-gray-700 mb-3">Learning Later:</h4>
+            <div className="flex flex-wrap gap-3">
+              {getSkillsByIds(profile?.unpriority_skills || []).map((skill: any) => (
+                <div key={skill.id} className="flex items-center gap-2 bg-purple-50 px-4 py-2 rounded-full">
+                  <span className="text-2xl">{skill.icon}</span>
+                  <span className="font-semibold text-gray-800">{skill.name}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <Link href="/onboarding">
+            <button className="mt-6 text-[#2956D9] hover:underline font-semibold">
+              Edit Skills →
             </button>
           </Link>
-        </div>
+        </motion.div>
+
+        {/* Badges Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.8 }}
+          className="bg-white rounded-2xl shadow-md p-8"
+        >
+          <h3 className="text-xl font-bold text-gray-800 mb-6">🏆 Badges & Achievements</h3>
+          {profile?.badges && profile.badges.length > 0 ? (
+            <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
+              {profile.badges.map((badge: string, idx: number) => (
+                <div key={idx} className="text-center">
+                  <div className="text-5xl mb-2">{badge}</div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <div className="text-6xl mb-4">🎖️</div>
+              <p>Complete lessons and games to earn badges!</p>
+            </div>
+          )}
+        </motion.div>
       </main>
     </div>
   )
