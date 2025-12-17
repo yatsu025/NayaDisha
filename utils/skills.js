@@ -12,7 +12,12 @@ export const availableSkills = [
   { id: 'ui-ux', name: 'UI/UX Design', icon: '🎨', category: 'design' },
   { id: 'cloud-computing', name: 'Cloud Computing', icon: '☁️', category: 'infrastructure' },
   { id: 'cybersecurity', name: 'Cybersecurity', icon: '🔒', category: 'security' },
-  { id: 'blockchain', name: 'Blockchain', icon: '⛓️', category: 'emerging' }
+  { id: 'blockchain', name: 'Blockchain', icon: '⛓️', category: 'emerging' },
+  { id: 'java', name: 'Java', icon: '☕', category: 'programming' },
+  { id: 'kotlin', name: 'Kotlin', icon: '🤖', category: 'mobile' },
+  { id: 'firebase', name: 'Firebase', icon: '🔥', category: 'backend' },
+  { id: 'networking', name: 'Networking', icon: '🌐', category: 'infrastructure' },
+  { id: 'linux', name: 'Linux', icon: '🐧', category: 'infrastructure' }
 ]
 
 export function getSkillById(id) {

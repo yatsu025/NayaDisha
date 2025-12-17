@@ -39,48 +39,31 @@ export default function MentorPage() {
     }
   }, [loading, user, profile])
 
-  // 🔥 REALTIME: Listen to token updates
+  // 🔥 REALTIME: Listen to user updates (includes tokens in users table)
   useEffect(() => {
     if (!profile?.id) return
 
-    const tokenChannel = supabase
-      .channel('token-realtime-mentor')
+    const userChannel = supabase
+      .channel('user-realtime-mentor')
       .on(
         'postgres_changes',
         { 
           event: 'UPDATE', 
           schema: 'public', 
-          table: 'user_tokens',
-          filter: `user_id=eq.${profile.id}`
+          table: 'users',
+          filter: `id=eq.${profile.id}`
         },
         (payload) => {
-          console.log('🔥 Realtime token update:', payload.new)
-          fetchUser() // Refresh to get new token count
+          console.log('🔥 Realtime user update in mentor:', payload.new)
+          fetchUser() // Refresh to get updated data
         }
       )
-      .subscribe()
-
-    // 🔥 REALTIME: Listen to new mentor requests
-    const mentorChannel = supabase
-      .channel('mentor-realtime')
-      .on(
-        'postgres_changes',
-        { 
-          event: 'INSERT', 
-          schema: 'public', 
-          table: 'mentor_requests',
-          filter: `user_id=eq.${profile.id}`
-        },
-        (payload) => {
-          console.log('🔥 Realtime mentor request:', payload.new)
-          loadMentorHistory() // Refresh chat history
-        }
-      )
-      .subscribe()
+      .subscribe((status) => {
+        console.log('📡 Mentor channel status:', status)
+      })
 
     return () => {
-      supabase.removeChannel(tokenChannel)
-      supabase.removeChannel(mentorChannel)
+      supabase.removeChannel(userChannel)
     }
   }, [profile?.id])
 

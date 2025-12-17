@@ -7,6 +7,7 @@ import { motion } from "framer-motion"
 import { supabase } from "@/lib/supabaseClient"
 import { useUser } from "@/store/useUser"
 import Navbar from "@/components/Navbar"
+import LevelMap from "@/components/LevelMap"
 import { getSkillsByIds } from "@/utils/skills"
 
 export default function UnpriorityPage() {
@@ -55,7 +56,18 @@ export default function UnpriorityPage() {
       progressMap[p.lesson_id] = p
     })
 
-    setLessons(lessonsData || [])
+    let finalLessons = lessonsData || []
+    if (!finalLessons || finalLessons.length === 0) {
+      const baseTitle = getSkillsByIds(profile.unpriority_skills)[0]?.name || 'Core'
+      finalLessons = [
+        { id: 'mock-unpriority-1', title: `Level 1: ${baseTitle} Basics`, description: '', level: 1, xp_reward: 40 },
+        { id: 'mock-unpriority-2', title: `Level 1: Practice`, description: '', level: 1, xp_reward: 40 },
+        { id: 'mock-unpriority-3', title: `Level 2: Intermediate`, description: '', level: 2, xp_reward: 60 },
+        { id: 'mock-unpriority-4', title: `Level 2: Project`, description: '', level: 2, xp_reward: 60 },
+        { id: 'mock-unpriority-5', title: `Level 3: Advanced`, description: '', level: 3, xp_reward: 80 }
+      ] as any
+    }
+    setLessons(finalLessons)
     setProgress(progressMap)
   }
 
@@ -71,6 +83,10 @@ export default function UnpriorityPage() {
     })
 
     fetchLessons()
+  }
+
+  const handleStartLesson = (lessonId: string, type: 'video' | 'theory') => {
+    router.push(`/lesson/${lessonId}?mode=${type}`)
   }
 
   if (loading) {
@@ -202,111 +218,11 @@ export default function UnpriorityPage() {
 
         {/* Lessons by Level */}
         {lessons.length > 0 && (
-          <>
-            {[1, 2, 3].map(level => {
-              const levelLessons = lessons.filter(l => l.level === level)
-              if (levelLessons.length === 0) return null
-
-              return (
-                <div key={level} className="mb-8">
-                  <motion.div
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className="flex items-center gap-3 mb-4"
-                  >
-                    <div className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-2 rounded-full font-bold">
-                      Level {level}
-                    </div>
-                    <div className="text-gray-600">
-                      {levelLessons.filter(l => progress[l.id]?.completed).length} / {levelLessons.length} completed
-                    </div>
-                  </motion.div>
-
-                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {levelLessons.map((lesson, index) => {
-                      const lessonProgress = progress[lesson.id]
-                      const isCompleted = lessonProgress?.completed
-                      const earnedXP = lessonProgress?.xp || 0
-
-                      return (
-                        <motion.div
-                          key={lesson.id}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.1 * index }}
-                          onClick={() => router.push(`/lesson/${lesson.id}`)}
-                          className={`bg-white rounded-2xl shadow-md p-6 hover:shadow-xl transition-all cursor-pointer border-2 ${
-                            isCompleted ? 'border-green-300' : 'border-gray-200'
-                          }`}
-                        >
-                          {/* Status Badge */}
-                          <div className="flex justify-between items-start mb-4">
-                            <div className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                              isCompleted ? 'bg-green-100 text-green-700' : 'bg-purple-100 text-purple-700'
-                            }`}>
-                              {isCompleted ? '✅ Completed' : '📖 Available'}
-                            </div>
-                            {isCompleted && (
-                              <div className="text-3xl">🏆</div>
-                            )}
-                          </div>
-
-                          {/* Title */}
-                          <h3 className="text-xl font-bold text-gray-800 mb-2">
-                            {lesson.title}
-                          </h3>
-
-                          {/* Language Badge */}
-                          <div className="flex items-center gap-2 mb-3">
-                            <span className="text-sm bg-pink-100 text-pink-700 px-2 py-1 rounded-full">
-                              🌐 {profile?.language === 'hi' ? 'हिंदी' : 
-                                  profile?.language === 'en' ? 'English' : 'Translated'}
-                            </span>
-                          </div>
-
-                          {/* Content Preview */}
-                          <p className="text-gray-600 text-sm mb-4 line-clamp-2">
-                            {lesson.english_content.substring(0, 100)}...
-                          </p>
-
-                          {/* XP Info */}
-                          <div className="flex justify-between items-center mb-3">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xl">⚡</span>
-                              <span className="font-bold text-gray-800">
-                                {isCompleted ? earnedXP : lesson.xp_reward} XP
-                              </span>
-                            </div>
-                            <button className={`font-semibold hover:underline ${
-                              isCompleted ? 'text-green-600' : 'text-purple-600'
-                            }`}>
-                              {isCompleted ? "Review" : "Start"} →
-                            </button>
-                          </div>
-
-                          {/* Progress Bar */}
-                          {lessonProgress && !isCompleted && (
-                            <div className="mt-4">
-                              <div className="flex justify-between text-xs text-gray-500 mb-1">
-                                <span>Progress</span>
-                                <span>{Math.round((earnedXP / lesson.xp_reward) * 100)}%</span>
-                              </div>
-                              <div className="w-full bg-gray-200 rounded-full h-2">
-                                <div
-                                  className="bg-gradient-to-r from-purple-500 to-pink-500 h-2 rounded-full transition-all"
-                                  style={{ width: `${(earnedXP / lesson.xp_reward) * 100}%` }}
-                                />
-                              </div>
-                            </div>
-                          )}
-                        </motion.div>
-                      )
-                    })}
-                  </div>
-                </div>
-              )
-            })}
-          </>
+          <LevelMap 
+            lessons={lessons} 
+            progress={progress} 
+            onStartLesson={handleStartLesson} 
+          />
         )}
 
         {/* Empty State */}

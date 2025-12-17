@@ -1,13 +1,16 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useRouter, useParams } from "next/navigation"
+import { useEffect, useState, Suspense } from "react"
+import { useRouter, useParams, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { supabase } from "@/lib/supabaseClient"
+import { Play } from "lucide-react"
 
-export default function LessonPage() {
+function LessonContent() {
   const router = useRouter()
   const params = useParams()
+  const searchParams = useSearchParams()
+  const mode = searchParams.get('mode') || 'theory'
   const [showEnglish, setShowEnglish] = useState(true)
 
   useEffect(() => {
@@ -82,7 +85,24 @@ fruits.remove("banana")`
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-8">
-        <div className="grid md:grid-cols-2 gap-6">
+        {mode === 'video' ? (
+          <div className="bg-white rounded-2xl shadow-md p-8 flex flex-col items-center justify-center min-h-[400px]">
+            <h1 className="text-3xl font-bold text-gray-800 mb-6">{lessonContent.english.title} (Video Lesson)</h1>
+            <div className="w-full max-w-3xl aspect-video bg-gray-900 rounded-xl flex items-center justify-center relative group cursor-pointer">
+              <Play size={64} className="text-white opacity-80 group-hover:opacity-100 transition-opacity" />
+              <div className="absolute bottom-4 left-4 right-4 text-white text-sm bg-black/50 p-2 rounded">
+                Video playback is simulated for this demo.
+              </div>
+            </div>
+            <button 
+              onClick={() => router.push(`/lesson/${params.id}?mode=theory`)}
+              className="mt-8 bg-blue-600 text-white px-6 py-3 rounded-full font-bold hover:bg-blue-700 transition-colors"
+            >
+              📖 Switch to Theory
+            </button>
+          </div>
+        ) : (
+          <div className="grid md:grid-cols-2 gap-6">
           {/* Left Panel - English */}
           <div className="bg-white rounded-2xl p-8 shadow-md">
             <div className="mb-4 flex items-center justify-between">
@@ -98,8 +118,9 @@ fruits.remove("banana")`
           {/* Right Panel - Selected Language */}
           <div className="bg-white rounded-2xl p-8 shadow-md">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-gray-500 uppercase">हिंदी</h2>
-              {!showEnglish && <span className="text-[#2956D9]">●</span>}
+              <h2 className="text-sm font-semibold text-gray-500 uppercase">
+                {showEnglish ? "हिंदी" : "English"}
+              </h2>
             </div>
             <h1 className="text-2xl font-bold text-gray-800 mb-6">{lessonContent.hindi.title}</h1>
             <div className="prose prose-sm max-w-none">
@@ -107,6 +128,7 @@ fruits.remove("banana")`
             </div>
           </div>
         </div>
+        )}
 
         {/* Navigation */}
         <div className="mt-8 flex justify-between">
@@ -123,5 +145,15 @@ fruits.remove("banana")`
         </div>
       </main>
     </div>
+  )
+}
+
+export default function LessonPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2956D9]"></div>
+    </div>}>
+      <LessonContent />
+    </Suspense>
   )
 }

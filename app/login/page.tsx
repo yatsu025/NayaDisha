@@ -15,9 +15,13 @@ export default function LoginPage() {
 
   useEffect(() => {
     const checkUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        router.push("/dashboard")
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          router.push("/dashboard")
+        }
+      } catch (err: any) {
+        setError(err?.message || "Failed to fetch")
       }
     }
     checkUser()
@@ -76,9 +80,6 @@ export default function LoginPage() {
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
-        options: {
-          redirectTo: `${window.location.origin}/dashboard`,
-        },
       })
       if (error) throw error
     } catch (error: any) {

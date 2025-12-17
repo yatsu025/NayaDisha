@@ -56,50 +56,15 @@ export default function DashboardPage() {
         (payload) => {
           console.log('🔥 Realtime user update:', payload.new)
           fetchUser() // Refresh user data
+          fetchStats() // Also refresh stats when user updates
         }
       )
-      .subscribe()
-
-    // 🔥 REALTIME: Listen to progress updates
-    const progressChannel = supabase
-      .channel('progress-realtime-dashboard')
-      .on(
-        'postgres_changes',
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'user_progress',
-          filter: `user_id=eq.${profile.id}`
-        },
-        (payload) => {
-          console.log('🔥 Realtime progress update:', payload.new)
-          fetchStats() // Refresh stats
-        }
-      )
-      .subscribe()
-
-    // 🔥 REALTIME: Listen to token updates
-    const tokenChannel = supabase
-      .channel('token-realtime-dashboard')
-      .on(
-        'postgres_changes',
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'user_tokens',
-          filter: `user_id=eq.${profile.id}`
-        },
-        (payload) => {
-          console.log('🔥 Realtime token update:', payload.new)
-          fetchUser() // Refresh to get new token count
-        }
-      )
-      .subscribe()
+      .subscribe((status) => {
+        console.log('📡 Dashboard channel status:', status)
+      })
 
     return () => {
       supabase.removeChannel(userChannel)
-      supabase.removeChannel(progressChannel)
-      supabase.removeChannel(tokenChannel)
     }
   }, [profile?.id])
 
