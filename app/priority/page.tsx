@@ -60,18 +60,7 @@ export default function PriorityPage() {
       progressMap[p.lesson_id] = p
     })
 
-    let finalLessons = lessonsData || []
-    if (!finalLessons || finalLessons.length === 0) {
-      const baseTitle = getSkillsByIds(profile.priority_skills)[0]?.name || 'Core'
-      finalLessons = [
-        { id: 'mock-priority-1', title: `Level 1: ${baseTitle} Basics`, description: '', level: 1, xp_reward: 50 },
-        { id: 'mock-priority-2', title: `Level 1: Practice`, description: '', level: 1, xp_reward: 50 },
-        { id: 'mock-priority-3', title: `Level 2: Intermediate`, description: '', level: 2, xp_reward: 75 },
-        { id: 'mock-priority-4', title: `Level 2: Project`, description: '', level: 2, xp_reward: 75 },
-        { id: 'mock-priority-5', title: `Level 3: Advanced`, description: '', level: 3, xp_reward: 100 }
-      ] as any
-    }
-    setLessons(finalLessons)
+    setLessons(lessonsData || [])
     setProgress(progressMap)
   }
 
