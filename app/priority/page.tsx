@@ -37,47 +37,31 @@ export default function PriorityPage() {
   }, [loading, user, profile, router])
 
   const fetchLessons = async () => {
-    try {
-      if (!profile?.priority_skills || profile.priority_skills.length === 0) {
-        setLessons([])
-        return
-      }
-      const { data: lessonsData, error: lessonsError } = await supabase
-        .from('lessons')
-        .select('*')
-        .in('skill_tag', profile.priority_skills)
-        .order('level', { ascending: true })
-      const { data: progressData } = await supabase
-        .from('user_progress')
-        .select('*')
-        .eq('user_id', profile.id)
-      const progressMap: any = {}
-      progressData?.forEach((p: any) => {
-        progressMap[p.lesson_id] = p
-      })
-      let finalLessons = lessonsData || []
-      if (lessonsError || !finalLessons || finalLessons.length === 0) {
-        const baseTitle = getSkillsByIds(profile.priority_skills)[0]?.name || 'Core'
-        finalLessons = [
-          { id: 'mock-priority-1', title: `Level 1: ${baseTitle} Basics`, description: '', level: 1, xp_reward: 50 },
-          { id: 'mock-priority-2', title: `Level 1: Practice`, description: '', level: 1, xp_reward: 50 },
-          { id: 'mock-priority-3', title: `Level 2: Intermediate`, description: '', level: 2, xp_reward: 75 },
-          { id: 'mock-priority-4', title: `Level 2: Project`, description: '', level: 2, xp_reward: 75 },
-          { id: 'mock-priority-5', title: `Level 3: Advanced`, description: '', level: 3, xp_reward: 100 }
-        ] as any
-      }
-      setLessons(finalLessons)
-      setProgress(progressMap)
-    } catch {
-      const baseTitle = getSkillsByIds(profile?.priority_skills || [])[0]?.name || 'Core'
-      const fallback = [
-        { id: 'mock-priority-1', title: `Level 1: ${baseTitle} Basics`, description: '', level: 1, xp_reward: 50 },
-        { id: 'mock-priority-2', title: `Level 1: Practice`, description: '', level: 1, xp_reward: 50 },
-        { id: 'mock-priority-3', title: `Level 2: Intermediate`, description: '', level: 2, xp_reward: 75 }
-      ] as any
-      setLessons(fallback)
-      setProgress({})
+    if (!profile?.priority_skills || profile.priority_skills.length === 0) {
+      setLessons([])
+      return
     }
+
+    // Fetch lessons matching priority skills
+    const { data: lessonsData } = await supabase
+      .from('lessons')
+      .select('*')
+      .in('skill_tag', profile.priority_skills)
+      .order('level', { ascending: true })
+
+    // Fetch user progress
+    const { data: progressData } = await supabase
+      .from('user_progress')
+      .select('*')
+      .eq('user_id', profile.id)
+
+    const progressMap: any = {}
+    progressData?.forEach((p: any) => {
+      progressMap[p.lesson_id] = p
+    })
+
+    setLessons(lessonsData || [])
+    setProgress(progressMap)
   }
 
   const handleStartLesson = (lessonId: string, type: 'video' | 'theory') => {
