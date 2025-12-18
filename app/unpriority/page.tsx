@@ -8,7 +8,7 @@ import { supabase } from "@/lib/supabaseClient"
 import { useUser } from "@/store/useUser"
 import Navbar from "@/components/Navbar"
 import LevelMap from "@/components/LevelMap"
-import { getSkillsByIds } from "@/utils/skills"
+import { getFieldById } from "@/utils/fields"
 
 export default function UnpriorityPage() {
   const router = useRouter()
@@ -35,15 +35,17 @@ export default function UnpriorityPage() {
   }, [loading, user, profile, router])
 
   const fetchLessons = async () => {
-    if (!profile?.unpriority_skills || profile.unpriority_skills.length === 0) {
+    if (!(profile as any)?.secondary_field) {
       setLessons([])
       return
     }
 
+    const field = getFieldById((profile as any).secondary_field || 'android')
+    const fieldSkills = field?.skills || []
     const { data: lessonsData } = await supabase
       .from('lessons')
       .select('*')
-      .in('skill_tag', profile.unpriority_skills)
+      .in('skill_tag', fieldSkills)
       .order('level', { ascending: true })
 
     const { data: progressData } = await supabase
@@ -60,19 +62,7 @@ export default function UnpriorityPage() {
     setProgress(progressMap)
   }
 
-  const moveToPriority = async (skillId: string) => {
-    if (!profile) return
-
-    const newPriority = [...(profile.priority_skills || []), skillId]
-    const newUnpriority = (profile.unpriority_skills || []).filter((id: string) => id !== skillId)
-
-    await updateProfile({
-      priority_skills: newPriority,
-      unpriority_skills: newUnpriority
-    })
-
-    fetchLessons()
-  }
+  const secondaryField = getFieldById((profile as any)?.secondary_field || 'android')
 
   const handleStartLesson = (lessonId: string, type: 'video' | 'theory') => {
     router.push(`/lesson/${lessonId}?mode=${type}`)
@@ -86,7 +76,7 @@ export default function UnpriorityPage() {
     )
   }
 
-  const unprioritySkills = getSkillsByIds(profile?.unpriority_skills || [])
+  const hasSecondaryField = Boolean((profile as any)?.secondary_field)
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -107,44 +97,26 @@ export default function UnpriorityPage() {
           </p>
         </motion.div>
 
-        {/* Selected Skills & Language Info */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl shadow-md p-6 mb-8 border-2 border-purple-200"
-        >
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
-            <div>
-              <h3 className="font-bold text-gray-800 mb-2">📚 Your Later Skills:</h3>
-              <div className="flex flex-wrap gap-3">
-                {unprioritySkills.length > 0 ? (
-                  unprioritySkills.map((skill: any) => (
-                    <div
-                      key={skill.id}
-                      className="flex items-center gap-2 bg-purple-100 border-2 border-purple-300 px-4 py-2 rounded-full shadow-sm group relative"
-                    >
-                      <span className="text-2xl">{skill.icon}</span>
-                      <span className="font-semibold text-gray-800">{skill.name}</span>
-                      <span className="text-purple-600">📚</span>
-                      <button
-                        onClick={() => moveToPriority(skill.id)}
-                        className="ml-2 text-xs bg-blue-500 text-white px-2 py-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                        title="Move to Priority"
-                      >
-                        ⭐ Priority
-                      </button>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-gray-500">No later skills selected yet</p>
-                )}
+          {/* Selected Field & Language Info */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl shadow-md p-6 mb-8 border-2 border-purple-200"
+          >
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
+              <div>
+                <h3 className="font-bold text-gray-800 mb-2">📚 Your Secondary Field:</h3>
+                <div className="flex items-center gap-3 bg-purple-100 border-2 border-purple-300 px-4 py-2 rounded-full shadow-sm">
+                  <span className="text-2xl">{secondaryField?.icon}</span>
+                  <span className="font-semibold text-gray-800">{secondaryField?.name}</span>
+                  <span className="text-purple-600">📚</span>
+                </div>
               </div>
-            </div>
-            <div className="bg-white rounded-xl px-4 py-3 shadow-sm border-2 border-pink-200">
-              <div className="text-sm text-gray-600 mb-1">Learning in:</div>
-              <div className="flex items-center gap-2">
-                <span className="text-2xl">🌐</span>
+              <div className="bg-white rounded-xl px-4 py-3 shadow-sm border-2 border-pink-200">
+                <div className="text-sm text-gray-600 mb-1">Learning in:</div>
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl">🌐</span>
                 <span className="font-bold text-purple-700">
                   {profile?.language === 'hi' ? 'हिंदी' : 
                    profile?.language === 'ta' ? 'தமிழ்' :
@@ -158,12 +130,11 @@ export default function UnpriorityPage() {
               </div>
             </div>
           </div>
-          
-          {unprioritySkills.length === 0 && (
+          {(!hasSecondaryField) && (
             <div className="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-4 mt-4">
               <p className="text-yellow-800">
-                ⚠️ <strong>No later skills selected!</strong> Go to your{' '}
-                <Link href="/profile" className="underline font-bold">profile</Link> to select skills you want to learn later.
+                ⚠️ <strong>No secondary field selected!</strong> Go to your{' '}
+                <Link href="/profile" className="underline font-bold">profile</Link> to select a secondary field.
               </p>
             </div>
           )}
@@ -226,9 +197,10 @@ export default function UnpriorityPage() {
               No lessons available yet
             </h3>
             <p className="text-gray-600 mb-6">
-              {unprioritySkills.length === 0 
+              {(!hasSecondaryField)
                 ? "Select some skills in your profile to see lessons here!"
-                : "We're adding more content for your later skills. Check back soon!"}
+                : "We're adding more content for your later skills. Check back soon!"
+               }
             </p>
             <Link href="/profile">
               <button className="bg-purple-500 hover:bg-purple-600 text-white font-bold px-8 py-3 rounded-full transition-colors">

@@ -126,8 +126,8 @@ export default function ProfilePage() {
       if (priorityField) {
         await updateProfile({
           priority_skills: priorityField.skills,
-          // We can store field choice in metadata if needed, but for now skills are enough
-          // We also update unpriority skills based on the secondary field
+          priority_field: selectedFieldId,
+          secondary_field: selectedUnpriorityFieldId || 'android',
           unpriority_skills: unpriorityField ? unpriorityField.skills : []
         })
       }
@@ -443,6 +443,20 @@ export default function ProfilePage() {
           {!editingSkills ? (
             // Display Mode
             <>
+              <div className="mb-4 grid md:grid-cols-2 gap-3">
+                <div className="bg-white rounded-xl px-4 py-3 shadow-sm border-2 border-blue-200">
+                  <div className="text-sm text-gray-600">Priority Field</div>
+                  <div className="font-bold text-blue-700">
+                    {getFieldById((profile as any)?.priority_field || selectedFieldId || 'fullstack')?.name || 'Fullstack Developer'}
+                  </div>
+                </div>
+                <div className="bg-white rounded-xl px-4 py-3 shadow-sm border-2 border-purple-200">
+                  <div className="text-sm text-gray-600">Secondary Field</div>
+                  <div className="font-bold text-purple-700">
+                    {getFieldById((profile as any)?.secondary_field || selectedUnpriorityFieldId || 'android')?.name || 'Android Developer'}
+                  </div>
+                </div>
+              </div>
               <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
                 <p className="text-green-700 text-sm">
                   ✅ <strong>Auto-Save Enabled:</strong> Your skill changes are automatically saved when you select them in edit mode!
@@ -450,37 +464,23 @@ export default function ProfilePage() {
               </div>
               <div className="mb-6">
                 <div className="flex items-center gap-2 mb-3">
-                  <h4 className="font-semibold text-gray-700">Priority Skills:</h4>
-                  <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
-                    {profile?.priority_skills?.length || 0}/5
-                  </span>
+                  <h4 className="font-semibold text-gray-700">Priority Field:</h4>
                 </div>
-                <div className="flex flex-wrap gap-3">
-                  {getSkillsByIds(profile?.priority_skills || []).map((skill: any) => (
-                    <div key={skill.id} className="flex items-center gap-2 bg-blue-50 border-2 border-blue-200 px-4 py-2 rounded-full">
-                      <span className="text-2xl">{skill.icon}</span>
-                      <span className="font-semibold text-gray-800">{skill.name}</span>
-                      <span className="text-blue-600 text-sm">⭐</span>
-                    </div>
-                  ))}
+                <div className="flex items-center gap-3 bg-blue-50 border-2 border-blue-200 px-4 py-2 rounded-full">
+                  <span className="text-2xl">{getFieldById((profile as any)?.priority_field || selectedFieldId || 'fullstack')?.icon}</span>
+                  <span className="font-semibold text-gray-800">{getFieldById((profile as any)?.priority_field || selectedFieldId || 'fullstack')?.name}</span>
+                  <span className="text-blue-600 text-sm">⭐</span>
                 </div>
               </div>
 
               <div>
                 <div className="flex items-center gap-2 mb-3">
-                  <h4 className="font-semibold text-gray-700">Learning Later:</h4>
-                  <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded-full">
-                    {profile?.unpriority_skills?.length || 0}/5
-                  </span>
+                  <h4 className="font-semibold text-gray-700">Secondary Field:</h4>
                 </div>
-                <div className="flex flex-wrap gap-3">
-                  {getSkillsByIds(profile?.unpriority_skills || []).map((skill: any) => (
-                    <div key={skill.id} className="flex items-center gap-2 bg-purple-50 border-2 border-purple-200 px-4 py-2 rounded-full">
-                      <span className="text-2xl">{skill.icon}</span>
-                      <span className="font-semibold text-gray-800">{skill.name}</span>
-                      <span className="text-purple-600 text-sm">📚</span>
-                    </div>
-                  ))}
+                <div className="flex items-center gap-3 bg-purple-50 border-2 border-purple-200 px-4 py-2 rounded-full">
+                  <span className="text-2xl">{getFieldById((profile as any)?.secondary_field || selectedUnpriorityFieldId || 'android')?.icon}</span>
+                  <span className="font-semibold text-gray-800">{getFieldById((profile as any)?.secondary_field || selectedUnpriorityFieldId || 'android')?.name}</span>
+                  <span className="text-purple-600 text-sm">📚</span>
                 </div>
               </div>
             </>

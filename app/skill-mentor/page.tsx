@@ -7,12 +7,16 @@ import { motion } from "framer-motion"
 import { useUser } from "@/store/useUser"
 import Navbar from "@/components/Navbar"
 import { availableSkills, getSkillsByIds } from "@/utils/skills"
+import { supabase } from "@/lib/supabaseClient"
 
 export default function SkillMentorPage() {
   const router = useRouter()
   const { user, profile, fetchUser } = useUser()
   const [loading, setLoading] = useState(true)
   const [selectedSkill, setSelectedSkill] = useState<string | null>(null)
+  const [messages, setMessages] = useState<{ role: "user" | "mentor"; text: string }[]>([])
+  const [input, setInput] = useState("")
+  const [sending, setSending] = useState(false)
 
   useEffect(() => {
     checkAuth()
@@ -40,6 +44,69 @@ export default function SkillMentorPage() {
   const prioritySkills = getSkillsByIds(profile?.priority_skills || [])
   const unprioritySkills = getSkillsByIds(profile?.unpriority_skills || [])
 
+  const generateMentorResponse = (question: string) => {
+    const data = {
+      priority_skills: profile?.priority_skills || [],
+      unpriority_skills: profile?.unpriority_skills || [],
+      xp: profile?.xp || 0,
+      level: profile?.level || 1,
+      language: profile?.language || "en",
+    }
+    const q = question.toLowerCase()
+    if (q.includes("roadmap") || q.includes("path") || q.includes("plan")) {
+      return `Based on your current progress (Level ${data.level}, ${data.xp} XP), here is your personalized roadmap:
+
+1) Priority: ${data.priority_skills.slice(0, 3).join(", ")}
+2) Earn ${500 - (data.xp % 500)} XP to reach Level ${data.level + 1}
+3) Explore: ${data.unpriority_skills[0] || "new skills"}`
+    } else if (q.includes("skill") || q.includes("learn") || q.includes("missing")) {
+      return `Strengths: ${data.priority_skills.join(", ")}
+Explore later: ${data.unpriority_skills.join(", ")}
+Recommendations: master one skill, build projects, practice daily`
+    } else if (q.includes("motivat") || q.includes("stuck") || q.includes("help")) {
+      return `You are doing great!
+Level: ${data.level}, XP: ${data.xp}
+Keep going: consistency, small daily progress, projects`
+    }
+    return `Focus on ${data.priority_skills.slice(0, 2).join(", ")}. Complete lessons daily. Build small projects. Learn in ${data.language}.`
+  }
+
+  const sendMessage = async () => {
+    if (!input.trim() || !profile?.id) return
+    setSending(true)
+    try {
+      setMessages(prev => [...prev, { role: "user", text: input.trim() }])
+      const { data: tokenRow } = await supabase
+        .from("user_tokens")
+        .select("tokens")
+        .eq("user_id", profile.id)
+        .single()
+      if (!tokenRow || tokenRow.tokens < 1) {
+        const resp = "You need tokens to chat. Earn tokens by completing lessons."
+        setMessages(prev => [...prev, { role: "mentor", text: resp }])
+        setInput("")
+        setSending(false)
+        return
+      }
+      const response = generateMentorResponse(input.trim())
+      await supabase
+        .from("mentor_requests")
+        .insert({
+          user_id: profile.id,
+          prompt: input.trim(),
+          response,
+          tokens_used: 1,
+        })
+      await supabase
+        .from("user_tokens")
+        .update({ tokens: tokenRow.tokens - 1, updated_at: new Date().toISOString() })
+        .eq("user_id", profile.id)
+      setMessages(prev => [...prev, { role: "mentor", text: response }])
+      setInput("")
+    } finally {
+      setSending(false)
+    }
+  }
   const getSkillAdvice = (skillId: string) => {
     const skill = availableSkills.find(s => s.id === skillId)
     if (!skill) return ""
@@ -120,56 +187,14 @@ export default function SkillMentorPage() {
   }
 
   const getGeneralAdvice = () => {
-    const priorityCount = profile?.priority_skills?.length || 0
-    const unpriorityCount = profile?.unpriority_skills?.length || 0
-
-    if (priorityCount === 0 && unpriorityCount === 0) {
-      return {
-        title: "🎯 Start Your Learning Journey!",
-        message: "You haven't selected any skills yet. Let me help you choose the right path based on your goals.",
-        tips: [
-          "💼 For Job Seekers: Start with Web Development or Python - high demand, quick results",
-          "📊 For Data Enthusiasts: Choose Data Science and Python - analyze data, build ML models",
-          "🎨 For Creatives: Pick UI/UX and Web Development - design beautiful, functional products",
-          "🚀 For Entrepreneurs: Learn Full Stack (Web Dev + Database + Cloud) - build your own products"
-        ]
-      }
-    }
-
-    if (priorityCount < 3) {
-      return {
-        title: "⚠️ Add More Priority Skills!",
-        message: "You need at least 3 priority skills to create a solid learning foundation.",
-        tips: [
-          "🎯 Choose skills that align with your career goals",
-          "💡 Pick complementary skills (e.g., Python + Data Science + Machine Learning)",
-          "⏰ Focus on skills with immediate job opportunities",
-          "📈 Balance between foundational and specialized skills"
-        ]
-      }
-    }
-
-    if (unpriorityCount < 3) {
-      return {
-        title: "📚 Add Skills to Learn Later!",
-        message: "Select skills you're interested in but want to learn after mastering your priorities.",
-        tips: [
-          "🔮 Think about future career directions",
-          "🌟 Choose skills that complement your priorities",
-          "💪 Pick skills that challenge you to grow",
-          "🎓 Consider emerging technologies for long-term growth"
-        ]
-      }
-    }
-
     return {
-      title: "✅ Perfect Balance!",
-      message: "You have a great mix of priority and later skills. Here's your personalized roadmap:",
+      title: "🎯 Choose One Specific Field",
+      message: "Pick a single focused career path (e.g., Fullstack, Android, Data Science, Cybersecurity). I will tailor your priority skills automatically.",
       tips: [
-        `🎯 Focus on: ${prioritySkills.slice(0, 2).map((s: any) => s.name).join(', ')} first`,
-        "📅 Dedicate 1-2 hours daily to your priority skills",
-        "🏆 Complete projects to solidify your learning",
-        `🔜 After 3-6 months, start exploring: ${unprioritySkills.slice(0, 2).map((s: any) => s.name).join(', ')}`
+        "💼 Job-ready? Choose Fullstack or Android",
+        "📊 Analytical? Choose Data Science",
+        "🔒 Security-minded? Choose Cybersecurity",
+        "🕒 Limited time? Pick one path and stay consistent"
       ]
     }
   }
@@ -201,6 +226,41 @@ export default function SkillMentorPage() {
                 ← Back to Profile
               </button>
             </Link>
+          </div>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-2xl shadow-md p-6 mb-8"
+        >
+          <h3 className="text-xl font-bold text-gray-800 mb-4">Chat with Mentor</h3>
+          <div className="space-y-3 max-h-72 overflow-y-auto border rounded-xl p-3">
+            {messages.length === 0 ? (
+              <div className="text-gray-500 text-sm">Start the chat. Tell your background and interests.</div>
+            ) : (
+              messages.map((m, i) => (
+                <div key={i} className={`p-2 rounded ${m.role === "user" ? "bg-blue-50" : "bg-purple-50"}`}>
+                  <div className="text-xs text-gray-500">{m.role === "user" ? "You" : "Mentor"}</div>
+                  <div className="text-gray-800">{m.text}</div>
+                </div>
+              ))
+            )}
+          </div>
+          <div className="mt-4 flex gap-2">
+            <input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Ask for roadmap or share interests..."
+              className="flex-1 px-4 py-2 rounded-xl border-2 border-gray-300 focus:border-purple-500 focus:outline-none"
+            />
+            <button
+              onClick={sendMessage}
+              disabled={sending}
+              className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-xl font-semibold disabled:opacity-50"
+            >
+              {sending ? "Sending..." : "Send"}
+            </button>
           </div>
         </motion.div>
 

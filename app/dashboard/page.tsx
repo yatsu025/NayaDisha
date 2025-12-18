@@ -8,7 +8,7 @@ import { supabase } from "@/lib/supabaseClient"
 import { useUser } from "@/store/useUser"
 import Navbar from "@/components/Navbar"
 import XPProgressBar from "@/components/XPProgressBar"
-import { availableSkills } from "@/utils/skills"
+import { getFieldById } from "@/utils/fields"
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -96,22 +96,25 @@ export default function DashboardPage() {
     )
   }
 
+  const priorityField = getFieldById((profile as any)?.priority_field || 'fullstack')
+  const secondaryField = getFieldById((profile as any)?.secondary_field || 'android')
+
   const sections = [
     {
-      title: "Priority Skills",
-      description: "Focus on mastering your priority skills",
+      title: "Priority Field",
+      description: "Focus on mastering your chosen field",
       icon: "⭐",
       color: "from-blue-500 to-blue-600",
       href: "/priority",
-      stats: `${profile?.priority_skills?.length || 0} skills`
+      stats: `${priorityField?.name || "Not selected"}`
     },
     {
-      title: "Learn Later",
-      description: "Skills you want to explore next",
+      title: "Secondary Field",
+      description: "Explore this field after your primary focus",
       icon: "📚",
       color: "from-purple-500 to-purple-600",
       href: "/unpriority",
-      stats: `${profile?.unpriority_skills?.length || 0} skills`
+      stats: `${secondaryField?.name || "Not selected"}`
     },
     {
       title: "Game Zone",
@@ -214,49 +217,27 @@ export default function DashboardPage() {
           </motion.div>
         </div>
 
-        {/* Skills Overview */}
+        {/* Field Overview */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
           className="bg-white rounded-2xl shadow-md p-6 mb-8"
         >
-          <h3 className="text-xl font-bold text-gray-800 mb-4">🎯 Your Learning Focus</h3>
+          <h3 className="text-xl font-bold text-gray-800 mb-4">🎯 Your Learning Fields</h3>
           <div className="grid md:grid-cols-2 gap-6">
-            <div>
-              <h4 className="font-semibold text-blue-700 mb-2">Priority Skills ({profile?.priority_skills?.length || 0})</h4>
-              <div className="flex flex-wrap gap-2">
-                {(profile?.priority_skills || []).slice(0, 3).map((skillId: string) => {
-                  const skill = availableSkills.find(s => s.id === skillId)
-                  return skill ? (
-                    <span key={skillId} className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
-                      {skill.icon} {skill.name}
-                    </span>
-                  ) : null
-                })}
-                {(profile?.priority_skills?.length || 0) > 3 && (
-                  <span className="bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-sm">
-                    +{(profile?.priority_skills?.length || 0) - 3} more
-                  </span>
-                )}
+            <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4">
+              <div className="text-sm text-gray-600 mb-1">Priority Field</div>
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">{priorityField?.icon}</span>
+                <span className="font-semibold text-blue-800">{priorityField?.name || "Not selected"}</span>
               </div>
             </div>
-            <div>
-              <h4 className="font-semibold text-purple-700 mb-2">Learning Later ({profile?.unpriority_skills?.length || 0})</h4>
-              <div className="flex flex-wrap gap-2">
-                {(profile?.unpriority_skills || []).slice(0, 3).map((skillId: string) => {
-                  const skill = availableSkills.find(s => s.id === skillId)
-                  return skill ? (
-                    <span key={skillId} className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm">
-                      {skill.icon} {skill.name}
-                    </span>
-                  ) : null
-                })}
-                {(profile?.unpriority_skills?.length || 0) > 3 && (
-                  <span className="bg-purple-50 text-purple-600 px-3 py-1 rounded-full text-sm">
-                    +{(profile?.unpriority_skills?.length || 0) - 3} more
-                  </span>
-                )}
+            <div className="bg-purple-50 border-2 border-purple-200 rounded-xl p-4">
+              <div className="text-sm text-gray-600 mb-1">Secondary Field</div>
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">{secondaryField?.icon}</span>
+                <span className="font-semibold text-purple-800">{secondaryField?.name || "Not selected"}</span>
               </div>
             </div>
           </div>
@@ -300,7 +281,7 @@ export default function DashboardPage() {
         >
           <h3 className="text-xl font-bold text-gray-800 mb-4">🔥 Keep Learning!</h3>
           <p className="text-gray-600 mb-4">
-            You're making great progress! Continue with your priority skills to unlock more badges and level up faster.
+            You're making great progress! Continue with your priority field to unlock more badges and level up faster.
           </p>
           <Link href="/priority">
             <button className="bg-[#2956D9] hover:bg-[#1a3a8a] text-white font-bold px-6 py-3 rounded-full transition-colors">
