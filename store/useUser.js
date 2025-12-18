@@ -9,7 +9,17 @@ export const useUser = create((set, get) => ({
 
   fetchUser: async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      
+      if (authError) {
+        if (authError.message.includes('Refresh Token Not Found') || authError.message.includes('Invalid Refresh Token')) {
+          console.warn('Refresh token invalid, signing out...')
+          await supabase.auth.signOut()
+          set({ user: null, profile: null, tokens: 0, loading: false })
+          return
+        }
+        throw authError
+      }
       
       if (user) {
         // Fetch profile

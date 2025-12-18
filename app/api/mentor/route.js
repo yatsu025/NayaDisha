@@ -11,37 +11,37 @@ function generateMentorResponse(profile, question) {
   const { priority_skills, unpriority_skills, xp, level, language } = profile
   
   const responses = {
-    roadmap: `Based on your current progress (Level ${level}, ${xp} XP), here's your personalized roadmap:
+    roadmap: `Based on your current progress (Level ${level}, ${xp} XP), here's your personalized career roadmap:
 
-1. **Priority Skills**: Focus on ${priority_skills?.slice(0, 3).join(', ')}
+1. **Primary Field**: Focus on ${priority_skills?.slice(0, 3).join(', ')}
    - Complete foundational lessons first
    - Practice daily for 30 minutes
    - Build small projects
 
 2. **Next Steps**: 
    - Reach Level ${level + 1} by earning ${500 - (xp % 500)} more XP
-   - Unlock advanced lessons in your priority areas
-   - Start exploring ${unpriority_skills?.[0] || 'new skills'}
+   - Unlock advanced lessons in your priority field
+   - Start exploring ${unpriority_skills?.[0] || 'new fields'}
 
-3. **Career Paths**:
+3. **Career Opportunities**:
    ${priority_skills?.includes('python') ? '- Python Developer\n   - Data Scientist\n' : ''}
    ${priority_skills?.includes('web-development') ? '- Full Stack Developer\n   - Frontend Engineer\n' : ''}
    ${priority_skills?.includes('data-science') ? '- Data Analyst\n   - ML Engineer\n' : ''}
 
 Keep learning consistently! 🚀`,
 
-    skills: `Your skill analysis:
+    skills: `Your career analysis:
 
 **Strengths**: ${priority_skills?.join(', ')}
 **Areas to explore**: ${unpriority_skills?.join(', ')}
 
 **Recommendations**:
-- Master one skill at a time
+- Master one field at a time
 - Build projects to apply knowledge
 - Join communities for peer learning
 - Practice coding daily
 
-**Missing Skills** (based on industry trends):
+**Missing Knowledge** (based on industry trends):
 - Problem Solving & Algorithms
 - Version Control (Git)
 - Communication Skills
@@ -54,7 +54,7 @@ Focus on depth over breadth! 💪`,
 **Your Progress**:
 - Level: ${level}
 - XP: ${xp}
-- Skills Learning: ${(priority_skills?.length || 0) + (unpriority_skills?.length || 0)}
+- Fields Learning: ${(priority_skills?.length || 0) + (unpriority_skills?.length || 0)}
 
 **Keep Going**:
 - Consistency beats intensity
@@ -70,10 +70,10 @@ You've got this! 💪`,
 
 Based on your profile:
 - Level: ${level}
-- Focus Areas: ${priority_skills?.slice(0, 2).join(', ')}
+- Focus Fields: ${priority_skills?.slice(0, 2).join(', ')}
 
 **My Suggestion**:
-1. Continue with your priority skills
+1. Continue with your primary field
 2. Complete at least one lesson daily
 3. Practice through the game section
 4. Build small projects to apply learning
@@ -84,14 +84,14 @@ Based on your profile:
 - Join study groups or communities
 - Track your progress regularly
 
-Need more specific guidance? Ask me about roadmaps, skills, or career paths! 🎯`
+Need more specific guidance? Ask me about roadmaps, fields, or career paths! 🎯`
   }
 
   const lowerQuestion = question.toLowerCase()
   
   if (lowerQuestion.includes('roadmap') || lowerQuestion.includes('path') || lowerQuestion.includes('plan')) {
     return responses.roadmap
-  } else if (lowerQuestion.includes('skill') || lowerQuestion.includes('learn') || lowerQuestion.includes('missing')) {
+  } else if (lowerQuestion.includes('skill') || lowerQuestion.includes('field') || lowerQuestion.includes('learn') || lowerQuestion.includes('missing')) {
     return responses.skills
   } else if (lowerQuestion.includes('motivat') || lowerQuestion.includes('help') || lowerQuestion.includes('stuck')) {
     return responses.motivation

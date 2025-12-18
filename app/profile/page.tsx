@@ -49,14 +49,20 @@ export default function ProfilePage() {
       if (!profile.priority_skills || profile.priority_skills.length === 0) {
         const defaultField = getFieldById('fullstack')
         if (defaultField) {
-          updateProfile({ priority_skills: defaultField.skills })
+          updateProfile({ 
+            priority_skills: defaultField.skills,
+            priority_field: 'fullstack'
+          })
           setSelectedFieldId('fullstack')
         }
       }
       if (!profile.unpriority_skills || profile.unpriority_skills.length === 0) {
         const secondaryField = getFieldById('android')
         if (secondaryField) {
-          updateProfile({ unpriority_skills: secondaryField.skills })
+          updateProfile({ 
+            unpriority_skills: secondaryField.skills,
+            secondary_field: 'android'
+          })
           setSelectedUnpriorityFieldId('android')
         }
       }
@@ -126,9 +132,9 @@ export default function ProfilePage() {
       if (priorityField) {
         await updateProfile({
           priority_skills: priorityField.skills,
-          // We can store field choice in metadata if needed, but for now skills are enough
-          // We also update unpriority skills based on the secondary field
-          unpriority_skills: unpriorityField ? unpriorityField.skills : []
+          priority_field: priorityField.id,
+          unpriority_skills: unpriorityField ? unpriorityField.skills : [],
+          secondary_field: unpriorityField ? unpriorityField.id : null
         })
       }
       
@@ -312,11 +318,11 @@ export default function ProfilePage() {
           className="bg-white rounded-2xl shadow-md p-8 mb-8"
         >
           <div className="flex justify-between items-center mb-6">
-            <h3 className="text-xl font-bold text-gray-800">🎯 Your Learning Skills</h3>
+            <h3 className="text-xl font-bold text-gray-800">🎯 Your Learning Fields</h3>
             <div className="flex gap-2">
-              <Link href="/skill-mentor">
+              <Link href="/mentor">
                 <button className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white px-4 py-2 rounded-full text-sm font-semibold transition-all shadow-md hover:shadow-lg">
-                  🧠 AI Skill Mentor
+                  🧠 AI Career Mentor
                 </button>
               </Link>
               <button
@@ -330,7 +336,7 @@ export default function ProfilePage() {
                   onClick={() => setEditingSkills(true)}
                   className="bg-[#2956D9] hover:bg-[#1a3a8a] text-white px-4 py-2 rounded-full text-sm font-semibold transition-colors"
                 >
-                  ✏️ Edit Skills
+                  ✏️ Edit Career Path
                 </button>
               ) : (
                 <div className="flex gap-2">
@@ -443,44 +449,99 @@ export default function ProfilePage() {
           {!editingSkills ? (
             // Display Mode
             <>
-              <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-6">
                 <p className="text-green-700 text-sm">
-                  ✅ <strong>Auto-Save Enabled:</strong> Your skill changes are automatically saved when you select them in edit mode!
+                  ✅ <strong>Career Path Active:</strong> Your learning roadmap is customized for your selected fields.
                 </p>
               </div>
-              <div className="mb-6">
-                <div className="flex items-center gap-2 mb-3">
-                  <h4 className="font-semibold text-gray-700">Priority Skills:</h4>
-                  <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">
-                    {profile?.priority_skills?.length || 0}/5
-                  </span>
-                </div>
-                <div className="flex flex-wrap gap-3">
-                  {getSkillsByIds(profile?.priority_skills || []).map((skill: any) => (
-                    <div key={skill.id} className="flex items-center gap-2 bg-blue-50 border-2 border-blue-200 px-4 py-2 rounded-full">
-                      <span className="text-2xl">{skill.icon}</span>
-                      <span className="font-semibold text-gray-800">{skill.name}</span>
-                      <span className="text-blue-600 text-sm">⭐</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
 
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <h4 className="font-semibold text-gray-700">Learning Later:</h4>
-                  <span className="bg-purple-100 text-purple-800 text-xs px-2 py-1 rounded-full">
-                    {profile?.unpriority_skills?.length || 0}/5
-                  </span>
+              <div className="grid md:grid-cols-2 gap-6">
+                {/* Priority Field Display */}
+                <div className="bg-blue-50 rounded-2xl p-6 border-2 border-blue-100">
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="text-sm font-bold bg-blue-100 text-blue-800 px-3 py-1 rounded-full uppercase tracking-wider">
+                      Priority Focus
+                    </span>
+                  </div>
+                  
+                  {(() => {
+                    const pField = profile?.priority_field 
+                      ? getFieldById(profile.priority_field) 
+                      : careerFields.find(f => f.skills.every(s => profile?.priority_skills?.includes(s))) || getFieldById('fullstack')
+                    
+                    return pField ? (
+                      <div>
+                         <div className="flex items-center gap-4 mb-4">
+                            <div className="text-5xl bg-white p-3 rounded-2xl shadow-sm">{pField.icon}</div>
+                            <div>
+                              <h4 className="text-2xl font-bold text-gray-800">{pField.name}</h4>
+                              <p className="text-blue-600 font-medium">Primary Career Goal</p>
+                            </div>
+                         </div>
+                         <p className="text-gray-600 text-sm mb-4 line-clamp-2">{pField.description}</p>
+                         
+                         <div className="space-y-2">
+                           <p className="text-xs font-bold text-gray-500 uppercase">Key Skills:</p>
+                           <div className="flex flex-wrap gap-2">
+                             {pField.skills.slice(0, 4).map(sid => {
+                               const s = availableSkills.find(sk => sk.id === sid)
+                               return s ? (
+                                 <span key={sid} className="text-xs bg-white border border-blue-200 px-2 py-1 rounded-md text-gray-700">
+                                   {s.name}
+                                 </span>
+                               ) : null
+                             })}
+                           </div>
+                         </div>
+                      </div>
+                    ) : (
+                      <p className="text-gray-500 italic">No priority field selected.</p>
+                    )
+                  })()}
                 </div>
-                <div className="flex flex-wrap gap-3">
-                  {getSkillsByIds(profile?.unpriority_skills || []).map((skill: any) => (
-                    <div key={skill.id} className="flex items-center gap-2 bg-purple-50 border-2 border-purple-200 px-4 py-2 rounded-full">
-                      <span className="text-2xl">{skill.icon}</span>
-                      <span className="font-semibold text-gray-800">{skill.name}</span>
-                      <span className="text-purple-600 text-sm">📚</span>
-                    </div>
-                  ))}
+
+                {/* Secondary Field Display */}
+                <div className="bg-purple-50 rounded-2xl p-6 border-2 border-purple-100">
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="text-sm font-bold bg-purple-100 text-purple-800 px-3 py-1 rounded-full uppercase tracking-wider">
+                      Learning Later
+                    </span>
+                  </div>
+
+                   {(() => {
+                    const sField = profile?.secondary_field 
+                      ? getFieldById(profile.secondary_field) 
+                      : careerFields.find(f => f.skills.every(s => profile?.unpriority_skills?.includes(s))) || getFieldById('android')
+                    
+                    return sField ? (
+                      <div>
+                         <div className="flex items-center gap-4 mb-4">
+                            <div className="text-5xl bg-white p-3 rounded-2xl shadow-sm">{sField.icon}</div>
+                            <div>
+                              <h4 className="text-2xl font-bold text-gray-800">{sField.name}</h4>
+                              <p className="text-purple-600 font-medium">Secondary Interest</p>
+                            </div>
+                         </div>
+                         <p className="text-gray-600 text-sm mb-4 line-clamp-2">{sField.description}</p>
+                         
+                         <div className="space-y-2">
+                           <p className="text-xs font-bold text-gray-500 uppercase">Key Skills:</p>
+                           <div className="flex flex-wrap gap-2">
+                             {sField.skills.slice(0, 4).map(sid => {
+                               const s = availableSkills.find(sk => sk.id === sid)
+                               return s ? (
+                                 <span key={sid} className="text-xs bg-white border border-purple-200 px-2 py-1 rounded-md text-gray-700">
+                                   {s.name}
+                                 </span>
+                               ) : null
+                             })}
+                           </div>
+                         </div>
+                      </div>
+                    ) : (
+                      <p className="text-gray-500 italic">No secondary field selected.</p>
+                    )
+                  })()}
                 </div>
               </div>
             </>

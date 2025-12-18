@@ -95,7 +95,7 @@ export default function MentorPage() {
       history.push({
         id: "welcome",
         role: "mentor",
-        content: "Hello! I'm your AI Mentor. I can help you with:\n\n• Personalized learning roadmaps\n• Skill recommendations\n• Career guidance\n• Motivation and tips\n\nAsk me anything! (1 token per question)"
+        content: "Hello! I'm your AI Mentor. I can help you with:\n\n• Personalized career roadmaps\n• Field recommendations\n• Career guidance\n• Motivation and tips\n\nAsk me anything! (1 token per question)"
       })
     }
 
@@ -103,8 +103,8 @@ export default function MentorPage() {
   }
 
   const freeSuggestions = [
-    "Show my learning roadmap",
-    "Analyze my skills",
+    "Show my career roadmap",
+    "Analyze my career path",
     "Give me motivation",
     "What should I learn next?"
   ]
@@ -213,11 +213,11 @@ export default function MentorPage() {
         <div className="grid md:grid-cols-2 gap-4 mb-6">
           <div className="bg-green-50 border-2 border-green-200 rounded-xl p-4">
             <h3 className="font-bold text-green-800 mb-2">🆓 Free Mentor</h3>
-            <p className="text-sm text-green-700">Basic roadmap and skill suggestions (rule-based)</p>
+            <p className="text-sm text-green-700">Basic roadmap and field suggestions (rule-based)</p>
           </div>
           <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4">
             <h3 className="font-bold text-blue-800 mb-2">🤖 AI Mentor (1 token)</h3>
-            <p className="text-sm text-blue-700">Personalized advice based on your profile</p>
+            <p className="text-sm text-blue-700">Personalized advice based on your career profile</p>
           </div>
         </div>
 

@@ -8,7 +8,7 @@ import { supabase } from "@/lib/supabaseClient"
 import { useUser } from "@/store/useUser"
 import Navbar from "@/components/Navbar"
 import LevelMap from "@/components/LevelMap"
-import { getFieldById } from "@/utils/fields"
+import { getFieldById, careerFields } from "@/utils/fields"
 
 export default function UnpriorityPage() {
   const router = useRouter()
@@ -36,11 +36,20 @@ export default function UnpriorityPage() {
 
   const fetchLessons = async () => {
     try {
-      if (!(profile as any)?.secondary_field) {
-        setLessons([])
-        return
+      let fieldId = (profile as any)?.secondary_field
+
+      // Fallback: Infer from skills if field is missing
+      if (!fieldId && (profile as any)?.unpriority_skills?.length > 0) {
+         const matchedField = careerFields.find(f => 
+            f.skills.every(s => (profile as any).unpriority_skills.includes(s))
+         )
+         if (matchedField) fieldId = matchedField.id
       }
-      const field = getFieldById((profile as any).secondary_field || 'android')
+      
+      // Default to 'android' if still nothing to ensure content is shown
+      if (!fieldId) fieldId = 'android'
+
+      const field = getFieldById(fieldId)
       const fieldSkills = field?.skills || []
       const { data: lessonsData, error: lessonsError } = await supabase
         .from('lessons')
@@ -81,7 +90,17 @@ export default function UnpriorityPage() {
     }
   }
 
-  const secondaryField = getFieldById((profile as any)?.secondary_field || 'android')
+  const secondaryField = (() => {
+      if (!profile) return getFieldById('android');
+      let fieldId = (profile as any).secondary_field
+      if (!fieldId && (profile as any).unpriority_skills?.length > 0) {
+          const matchedField = careerFields.find(f => 
+              f.skills.every(s => (profile as any).unpriority_skills.includes(s))
+          )
+          if (matchedField) fieldId = matchedField.id
+      }
+      return getFieldById(fieldId || 'android')
+  })()
 
   const handleStartLesson = (lessonId: string, type: 'video' | 'theory') => {
     router.push(`/lesson/${lessonId}?mode=${type}`)
@@ -95,7 +114,7 @@ export default function UnpriorityPage() {
     )
   }
 
-  const hasSecondaryField = Boolean((profile as any)?.secondary_field)
+  const hasSecondaryField = true // We always fallback to a field now
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -109,10 +128,10 @@ export default function UnpriorityPage() {
           className="mb-8"
         >
           <h1 className="text-4xl font-bold text-gray-800 mb-2">
-            📚 Learn Later
+            📚 Secondary Interest
           </h1>
           <p className="text-gray-600 text-lg">
-            Skills you want to explore after mastering your priorities
+            Fields you want to explore after mastering your priority career path
           </p>
         </motion.div>
 
@@ -217,8 +236,8 @@ export default function UnpriorityPage() {
             </h3>
             <p className="text-gray-600 mb-6">
               {(!hasSecondaryField)
-                ? "Select some skills in your profile to see lessons here!"
-                : "We're adding more content for your later skills. Check back soon!"
+                ? "Select a secondary field in your profile to see lessons here!"
+                : "We're adding more content for your secondary field. Check back soon!"
                }
             </p>
             <Link href="/profile">

@@ -6,15 +6,15 @@ import { motion } from "framer-motion"
 import { supabase } from "@/lib/supabaseClient"
 import { useUser } from "@/store/useUser"
 import { useLanguage } from "@/store/useLanguage"
-import { availableSkills } from "@/utils/skills"
+import { careerFields } from "@/utils/fields"
 
 export default function OnboardingPage() {
     const router = useRouter()
     const { user, profile, fetchUser, updateProfile } = useUser()
     const { language } = useLanguage()
     const [loading, setLoading] = useState(true)
-    const [prioritySkills, setPrioritySkills] = useState<string[]>([])
-    const [unprioritySkills, setUnprioritySkills] = useState<string[]>([])
+    const [priorityField, setPriorityField] = useState<string | null>(null)
+    const [unpriorityField, setUnpriorityField] = useState<string | null>(null)
     const [step, setStep] = useState(1)
 
     useEffect(() => {
@@ -34,38 +34,25 @@ export default function OnboardingPage() {
         }
     }, [loading, user, profile, router])
 
-    const togglePrioritySkill = (skillId: string) => {
-        setPrioritySkills(prev =>
-            prev.includes(skillId)
-                ? prev.filter(id => id !== skillId)
-                : prev.length < 5
-                    ? [...prev, skillId]
-                    : prev
-        )
-    }
-
-    const toggleUnprioritySkill = (skillId: string) => {
-        setUnprioritySkills(prev =>
-            prev.includes(skillId)
-                ? prev.filter(id => id !== skillId)
-                : prev.length < 5
-                    ? [...prev, skillId]
-                    : prev
-        )
-    }
-
     const handleComplete = async () => {
-        if (prioritySkills.length < 3 || unprioritySkills.length < 3) {
-            alert("Please select at least 3 skills in each category")
+        if (!priorityField || !unpriorityField) {
+            alert("Please select a field in each category")
             return
         }
+
+        const pField = careerFields.find(f => f.id === priorityField)
+        const uField = careerFields.find(f => f.id === unpriorityField)
+
+        if (!pField || !uField) return
 
         setLoading(true)
 
         try {
             await updateProfile({
-                priority_skills: prioritySkills,
-                unpriority_skills: unprioritySkills,
+                priority_field: pField.id,
+                priority_skills: pField.skills,
+                secondary_field: uField.id,
+                unpriority_skills: uField.skills,
                 profile_complete: true,
                 language: language
             })
@@ -128,7 +115,7 @@ export default function OnboardingPage() {
                     </div>
                 </div>
 
-                {/* Step 1: Priority Skills */}
+                {/* Step 1: Priority Field */}
                 {step === 1 && (
                     <motion.div
                         initial={{ opacity: 0, x: 20 }}
@@ -136,38 +123,41 @@ export default function OnboardingPage() {
                         className="bg-white rounded-3xl shadow-xl p-8"
                     >
                         <h2 className="text-2xl font-bold text-gray-800 mb-4">
-                            Select Your Priority Skills (3-5)
+                            Select Your Primary Career Path
                         </h2>
                         <p className="text-gray-600 mb-6">
-                            Choose the skills you want to focus on and master first
+                            Choose the main field you want to build a career in
                         </p>
 
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
-                            {availableSkills.map((skill) => (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+                            {careerFields.map((field) => (
                                 <motion.button
-                                    key={skill.id}
-                                    whileHover={{ scale: 1.05 }}
-                                    whileTap={{ scale: 0.95 }}
-                                    onClick={() => togglePrioritySkill(skill.id)}
-                                    className={`p-4 rounded-xl border-2 transition-all ${prioritySkills.includes(skill.id)
-                                        ? "border-[#2956D9] bg-blue-50 shadow-md"
+                                    key={field.id}
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.98 }}
+                                    onClick={() => setPriorityField(field.id)}
+                                    className={`p-6 rounded-xl border-2 transition-all text-left flex items-start gap-4 ${priorityField === field.id
+                                        ? "border-[#2956D9] bg-blue-50 shadow-md ring-2 ring-blue-200"
                                         : "border-gray-200 hover:border-[#2956D9]"
                                         }`}
                                 >
-                                    <div className="text-3xl mb-2">{skill.icon}</div>
-                                    <div className="font-semibold text-sm text-gray-800">{skill.name}</div>
+                                    <div className="text-4xl">{field.icon}</div>
+                                    <div>
+                                        <div className="font-bold text-lg text-gray-800 mb-1">{field.name}</div>
+                                        <div className="text-sm text-gray-500 line-clamp-2">{field.description}</div>
+                                    </div>
                                 </motion.button>
                             ))}
                         </div>
 
                         <div className="flex justify-between items-center">
                             <p className="text-sm text-gray-500">
-                                Selected: {prioritySkills.length}/5
+                                Selected: {priorityField ? careerFields.find(f => f.id === priorityField)?.name : "None"}
                             </p>
                             <button
                                 onClick={() => setStep(2)}
-                                disabled={prioritySkills.length < 3}
-                                className={`px-8 py-3 rounded-full font-bold transition-colors ${prioritySkills.length >= 3
+                                disabled={!priorityField}
+                                className={`px-8 py-3 rounded-full font-bold transition-colors ${priorityField
                                     ? "bg-[#FFC947] hover:bg-[#e6b33f] text-[#2956D9]"
                                     : "bg-gray-300 text-gray-500 cursor-not-allowed"
                                     }`}
@@ -178,7 +168,7 @@ export default function OnboardingPage() {
                     </motion.div>
                 )}
 
-                {/* Step 2: Unpriority Skills */}
+                {/* Step 2: Unpriority Field */}
                 {step === 2 && (
                     <motion.div
                         initial={{ opacity: 0, x: 20 }}
@@ -186,54 +176,57 @@ export default function OnboardingPage() {
                         className="bg-white rounded-3xl shadow-xl p-8"
                     >
                         <h2 className="text-2xl font-bold text-gray-800 mb-4">
-                            Select Skills to Learn Later (3-5)
+                            Select Secondary Interest (Learn Later)
                         </h2>
                         <p className="text-gray-600 mb-6">
-                            Choose skills you're interested in but want to learn after mastering your priorities
+                            Choose another field you'd like to explore in the future
                         </p>
 
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
-                            {availableSkills
-                                .filter(skill => !prioritySkills.includes(skill.id))
-                                .map((skill) => (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+                            {careerFields
+                                .filter(field => field.id !== priorityField)
+                                .map((field) => (
                                     <motion.button
-                                        key={skill.id}
-                                        whileHover={{ scale: 1.05 }}
-                                        whileTap={{ scale: 0.95 }}
-                                        onClick={() => toggleUnprioritySkill(skill.id)}
-                                        className={`p-4 rounded-xl border-2 transition-all ${unprioritySkills.includes(skill.id)
-                                            ? "border-[#FFC947] bg-yellow-50 shadow-md"
-                                            : "border-gray-200 hover:border-[#FFC947]"
+                                        key={field.id}
+                                        whileHover={{ scale: 1.02 }}
+                                        whileTap={{ scale: 0.98 }}
+                                        onClick={() => setUnpriorityField(field.id)}
+                                        className={`p-6 rounded-xl border-2 transition-all text-left flex items-start gap-4 ${unpriorityField === field.id
+                                            ? "border-[#2956D9] bg-blue-50 shadow-md ring-2 ring-blue-200"
+                                            : "border-gray-200 hover:border-[#2956D9]"
                                             }`}
                                     >
-                                        <div className="text-3xl mb-2">{skill.icon}</div>
-                                        <div className="font-semibold text-sm text-gray-800">{skill.name}</div>
+                                        <div className="text-4xl">{field.icon}</div>
+                                        <div>
+                                            <div className="font-bold text-lg text-gray-800 mb-1">{field.name}</div>
+                                            <div className="text-sm text-gray-500 line-clamp-2">{field.description}</div>
+                                        </div>
                                     </motion.button>
                                 ))}
                         </div>
 
                         <div className="flex justify-between items-center">
-                            <button
-                                onClick={() => setStep(1)}
-                                className="px-8 py-3 rounded-full font-bold bg-gray-200 hover:bg-gray-300 text-gray-700 transition-colors"
-                            >
-                                ← Back
-                            </button>
-                            <div className="flex items-center gap-4">
-                                <p className="text-sm text-gray-500">
-                                    Selected: {unprioritySkills.length}/5
-                                </p>
+                            <div className="flex gap-4">
                                 <button
-                                    onClick={handleComplete}
-                                    disabled={unprioritySkills.length < 3 || loading}
-                                    className={`px-8 py-3 rounded-full font-bold transition-colors ${unprioritySkills.length >= 3 && !loading
-                                        ? "bg-[#2956D9] hover:bg-[#1a3a8a] text-white"
-                                        : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                                        }`}
+                                    onClick={() => setStep(1)}
+                                    className="text-gray-500 hover:text-gray-700 font-semibold"
                                 >
-                                    {loading ? "Saving..." : "Complete Setup 🎉"}
+                                    ← Back
                                 </button>
+                                <p className="text-sm text-gray-500 self-center">
+                                    Selected: {unpriorityField ? careerFields.find(f => f.id === unpriorityField)?.name : "None"}
+                                </p>
                             </div>
+                            <button
+                                onClick={handleComplete}
+                                disabled={!unpriorityField}
+                                className={`px-8 py-3 rounded-full font-bold transition-colors ${unpriorityField
+                                    ? "bg-[#2956D9] hover:bg-[#1a3b9e] text-white"
+                                    : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                                    }`}
+                            >
+                                Finish Setup 🎉
+                            </button>
                         </div>
                     </motion.div>
                 )}

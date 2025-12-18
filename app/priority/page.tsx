@@ -10,6 +10,7 @@ import { useLanguage } from "@/store/useLanguage"
 import Navbar from "@/components/Navbar"
 import LevelMap from "@/components/LevelMap"
 import { getSkillsByIds } from "@/utils/skills"
+import { careerFields, getFieldById } from "@/utils/fields"
 
 export default function PriorityPage() {
   const router = useRouter()
@@ -37,16 +38,33 @@ export default function PriorityPage() {
   }, [loading, user, profile, router])
 
   const fetchLessons = async () => {
-    if (!profile?.priority_skills || profile.priority_skills.length === 0) {
-      setLessons([])
-      return
+    let fieldId = (profile as any)?.priority_field
+
+    // Fallback: Infer from skills if field is missing
+    if (!fieldId && (profile as any)?.priority_skills?.length > 0) {
+        const matchedField = careerFields.find(f => 
+            f.skills.every(s => (profile as any).priority_skills.includes(s))
+        )
+        if (matchedField) fieldId = matchedField.id
     }
+    
+    // Default to 'fullstack' if still nothing (or handle empty state)
+    if (!fieldId && (!profile?.priority_skills || profile.priority_skills.length === 0)) {
+        setLessons([])
+        return
+    }
+    
+    // If we have skills but no field matched (rare), default to fullstack or first match
+    if (!fieldId) fieldId = 'fullstack' 
+
+    const field = getFieldById(fieldId)
+    const fieldSkills = field?.skills || profile?.priority_skills || []
 
     // Fetch lessons matching priority skills
     const { data: lessonsData } = await supabase
       .from('lessons')
       .select('*')
-      .in('skill_tag', profile.priority_skills)
+      .in('skill_tag', fieldSkills)
       .order('level', { ascending: true })
 
     // Fetch user progress
@@ -76,7 +94,17 @@ export default function PriorityPage() {
     )
   }
 
-  const prioritySkills = getSkillsByIds(profile?.priority_skills || [])
+  const priorityField = (() => {
+      if (!profile) return null;
+      let fieldId = (profile as any).priority_field
+      if (!fieldId && (profile as any).priority_skills?.length > 0) {
+          const matchedField = careerFields.find(f => 
+              f.skills.every(s => (profile as any).priority_skills.includes(s))
+          )
+          if (matchedField) fieldId = matchedField.id
+      }
+      return getFieldById(fieldId || 'fullstack')
+  })()
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -90,14 +118,14 @@ export default function PriorityPage() {
           className="mb-8"
         >
           <h1 className="text-4xl font-bold text-gray-800 mb-2">
-            ⭐ Priority Skills
+            ⭐ Priority Field
           </h1>
           <p className="text-gray-600 text-lg">
-            Master these skills to achieve your learning goals
+            Master your career path to achieve your goals
           </p>
         </motion.div>
 
-        {/* Selected Skills & Language Info */}
+        {/* Selected Field & Language Info */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -106,23 +134,16 @@ export default function PriorityPage() {
         >
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
             <div>
-              <h3 className="font-bold text-gray-800 mb-2">🎯 Your Priority Skills:</h3>
-              <div className="flex flex-wrap gap-3">
-                {prioritySkills.length > 0 ? (
-                  prioritySkills.map((skill: any) => (
-                    <div
-                      key={skill.id}
-                      className="flex items-center gap-2 bg-blue-100 border-2 border-blue-300 px-4 py-2 rounded-full shadow-sm"
-                    >
-                      <span className="text-2xl">{skill.icon}</span>
-                      <span className="font-semibold text-gray-800">{skill.name}</span>
-                      <span className="text-blue-600">⭐</span>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-gray-500">No priority skills selected yet</p>
-                )}
-              </div>
+              <h3 className="font-bold text-gray-800 mb-2">🎯 Your Career Path:</h3>
+               {priorityField ? (
+                <div className="flex items-center gap-3 bg-blue-100 border-2 border-blue-300 px-4 py-2 rounded-full shadow-sm">
+                  <span className="text-2xl">{priorityField.icon}</span>
+                  <span className="font-semibold text-gray-800">{priorityField.name}</span>
+                  <span className="text-blue-600">⭐</span>
+                </div>
+              ) : (
+                 <p className="text-gray-500">No priority field selected yet</p>
+              )}
             </div>
             <div className="bg-white rounded-xl px-4 py-3 shadow-sm border-2 border-purple-200">
               <div className="text-sm text-gray-600 mb-1">Learning in:</div>
@@ -142,11 +163,11 @@ export default function PriorityPage() {
             </div>
           </div>
           
-          {prioritySkills.length === 0 && (
+          {!priorityField && (
             <div className="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-4 mt-4">
               <p className="text-yellow-800">
-                ⚠️ <strong>No priority skills selected!</strong> Go to your{' '}
-                <Link href="/profile" className="underline font-bold">profile</Link> to select skills you want to focus on.
+                ⚠️ <strong>No priority field selected!</strong> Go to your{' '}
+                <Link href="/profile" className="underline font-bold">profile</Link> to select a career path.
               </p>
             </div>
           )}
@@ -209,7 +230,7 @@ export default function PriorityPage() {
               No lessons available yet
             </h3>
             <p className="text-gray-600">
-              We're adding more content for your priority skills. Check back soon!
+              We're adding more content for your priority field. Check back soon!
             </p>
           </motion.div>
         )}
