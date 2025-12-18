@@ -12,12 +12,21 @@ function LessonContent() {
   const searchParams = useSearchParams()
   const mode = searchParams.get('mode') || 'theory'
   const [showEnglish, setShowEnglish] = useState(true)
+  const [networkError, setNetworkError] = useState<string | null>(null)
 
   useEffect(() => {
     const checkUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
-        router.push("/login")
+      try {
+        const { data: { user }, error } = await supabase.auth.getUser()
+        if (error) {
+          setNetworkError("Network error. Please check your connection.")
+          return
+        }
+        if (!user) {
+          router.push("/login")
+        }
+      } catch (e) {
+        setNetworkError("Failed to fetch. Please retry.")
       }
     }
     checkUser()
@@ -85,6 +94,11 @@ fruits.remove("banana")`
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-8">
+        {networkError && (
+          <div className="mb-4 bg-red-50 text-red-700 border border-red-200 rounded-xl px-4 py-3">
+            {networkError}
+          </div>
+        )}
         {mode === 'video' ? (
           <div className="bg-white rounded-2xl shadow-md p-8 flex flex-col items-center justify-center min-h-[400px]">
             <h1 className="text-3xl font-bold text-gray-800 mb-6">{lessonContent.english.title} (Video Lesson)</h1>

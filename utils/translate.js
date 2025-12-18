@@ -2,6 +2,7 @@
 
 export async function translateText(text, targetLang, sourceLang = 'en') {
   if (targetLang === 'en' || !text) return text
+  if (process.env.NEXT_PUBLIC_DISABLE_TRANSLATION === 'true') return text
 
   try {
     const response = await fetch('/api/translate', {
@@ -24,6 +25,7 @@ export async function translateText(text, targetLang, sourceLang = 'en') {
 
 export async function translateLesson(lessonId, targetLang) {
   if (targetLang === 'en') return null
+  if (process.env.NEXT_PUBLIC_DISABLE_TRANSLATION === 'true') return null
 
   try {
     const response = await fetch(`/api/translate/lesson`, {
