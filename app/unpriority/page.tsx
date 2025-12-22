@@ -37,55 +37,48 @@ export default function UnpriorityPage() {
   const fetchLessons = async () => {
     try {
       let fieldId = (profile as any)?.secondary_field
-
-      // Fallback: Infer from skills if field is missing
       if (!fieldId && (profile as any)?.unpriority_skills?.length > 0) {
          const matchedField = careerFields.find(f => 
             f.skills.every(s => (profile as any).unpriority_skills.includes(s))
          )
          if (matchedField) fieldId = matchedField.id
       }
-      
-      // Default to 'android' if still nothing to ensure content is shown
       if (!fieldId) fieldId = 'android'
 
-      const field = getFieldById(fieldId)
-      const fieldSkills = field?.skills || []
-      const { data: lessonsData, error: lessonsError } = await supabase
-        .from('lessons')
+      const { data: roadmap } = await supabase
+        .from('roadmaps')
         .select('*')
-        .in('skill_tag', fieldSkills)
-        .order('level', { ascending: true })
+        .eq('slug', fieldId)
+        .single()
+
+      if (!roadmap) {
+        setLessons([])
+        setProgress({})
+        return
+      }
+
+      const { data: levelsData } = await supabase
+        .from('levels')
+        .select('*')
+        .eq('roadmap_id', roadmap.id)
+        .eq('is_active', true)
+        .order('level_no', { ascending: true })
+
       const { data: progressData } = await supabase
         .from('user_progress')
         .select('*')
         .eq('user_id', profile.id)
+        .eq('roadmap_id', roadmap.id)
+
       const progressMap: any = {}
       progressData?.forEach((p: any) => {
-        progressMap[p.lesson_id] = p
+        progressMap[p.level_no] = { completed: p.completed }
       })
-      let finalLessons = lessonsData || []
-      if (lessonsError || !finalLessons || finalLessons.length === 0) {
-        const baseTitle = field?.name || 'Core'
-        finalLessons = [
-          { id: 'mock-unpriority-1', title: `Level 1: ${baseTitle} Basics`, description: '', level: 1, xp_reward: 40 },
-          { id: 'mock-unpriority-2', title: `Level 1: Practice`, description: '', level: 1, xp_reward: 40 },
-          { id: 'mock-unpriority-3', title: `Level 2: Intermediate`, description: '', level: 2, xp_reward: 60 },
-          { id: 'mock-unpriority-4', title: `Level 2: Project`, description: '', level: 2, xp_reward: 60 },
-          { id: 'mock-unpriority-5', title: `Level 3: Advanced`, description: '', level: 3, xp_reward: 80 }
-        ] as any
-      }
-      setLessons(finalLessons)
+
+      setLessons(levelsData || [])
       setProgress(progressMap)
     } catch {
-      const field = getFieldById((profile as any)?.secondary_field || 'android')
-      const baseTitle = field?.name || 'Core'
-      const fallback = [
-        { id: 'mock-unpriority-1', title: `Level 1: ${baseTitle} Basics`, description: '', level: 1, xp_reward: 40 },
-        { id: 'mock-unpriority-2', title: `Level 1: Practice`, description: '', level: 1, xp_reward: 40 },
-        { id: 'mock-unpriority-3', title: `Level 2: Intermediate`, description: '', level: 2, xp_reward: 60 }
-      ] as any
-      setLessons(fallback)
+      setLessons([])
       setProgress({})
     }
   }
@@ -178,49 +171,15 @@ export default function UnpriorityPage() {
           )}
         </motion.div>
 
-        {/* Progress Summary */}
+        {/* Lessons by Level (Gamified Map) */}
         {lessons.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="bg-white rounded-2xl shadow-md p-6 mb-8"
-          >
-            <h3 className="font-bold text-gray-800 mb-4">📊 Your Progress</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="text-center p-4 bg-purple-50 rounded-xl">
-                <div className="text-3xl font-bold text-purple-600">{lessons.length}</div>
-                <div className="text-sm text-gray-600">Total Lessons</div>
-              </div>
-              <div className="text-center p-4 bg-green-50 rounded-xl">
-                <div className="text-3xl font-bold text-green-600">
-                  {Object.values(progress).filter((p: any) => p.completed).length}
-                </div>
-                <div className="text-sm text-gray-600">Completed</div>
-              </div>
-              <div className="text-center p-4 bg-yellow-50 rounded-xl">
-                <div className="text-3xl font-bold text-yellow-600">
-                  {lessons.length - Object.values(progress).filter((p: any) => p.completed).length}
-                </div>
-                <div className="text-sm text-gray-600">Remaining</div>
-              </div>
-              <div className="text-center p-4 bg-pink-50 rounded-xl">
-                <div className="text-3xl font-bold text-pink-600">
-                  {Math.round((Object.values(progress).filter((p: any) => p.completed).length / lessons.length) * 100) || 0}%
-                </div>
-                <div className="text-sm text-gray-600">Progress</div>
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        {/* Lessons by Level */}
-        {lessons.length > 0 && (
-          <LevelMap 
-            lessons={lessons} 
-            progress={progress} 
-            onStartLesson={handleStartLesson} 
-          />
+          <div className="bg-white/50 backdrop-blur-sm rounded-3xl p-4 md:p-8 shadow-inner border border-white/60">
+             <LevelMap 
+               lessons={lessons} 
+               progress={progress} 
+               onStartLesson={handleStartLesson} 
+             />
+          </div>
         )}
 
         {/* Empty State */}

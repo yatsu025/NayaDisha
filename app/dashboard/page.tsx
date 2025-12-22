@@ -9,7 +9,7 @@ import { useUser } from "@/store/useUser"
 import Navbar from "@/components/Navbar"
 import XPProgressBar from "@/components/XPProgressBar"
 import { availableSkills } from "@/utils/skills"
-import { getFieldById } from "@/utils/fields"
+import { getFieldById, careerFields } from "@/utils/fields"
 
 export default function DashboardPage() {
   const router = useRouter()

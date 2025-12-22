@@ -6,16 +6,13 @@ import Link from "next/link"
 import { motion } from "framer-motion"
 import { supabase } from "@/lib/supabaseClient"
 import { useUser } from "@/store/useUser"
-import { useLanguage } from "@/store/useLanguage"
 import Navbar from "@/components/Navbar"
 import LevelMap from "@/components/LevelMap"
-import { getSkillsByIds } from "@/utils/skills"
 import { careerFields, getFieldById } from "@/utils/fields"
 
 export default function PriorityPage() {
   const router = useRouter()
   const { user, profile, fetchUser } = useUser()
-  const { language } = useLanguage()
   const [loading, setLoading] = useState(true)
   const [lessons, setLessons] = useState<any[]>([])
   const [progress, setProgress] = useState<any>({})
@@ -39,46 +36,45 @@ export default function PriorityPage() {
 
   const fetchLessons = async () => {
     let fieldId = (profile as any)?.priority_field
-
-    // Fallback: Infer from skills if field is missing
     if (!fieldId && (profile as any)?.priority_skills?.length > 0) {
         const matchedField = careerFields.find(f => 
             f.skills.every(s => (profile as any).priority_skills.includes(s))
         )
         if (matchedField) fieldId = matchedField.id
     }
-    
-    // Default to 'fullstack' if still nothing (or handle empty state)
-    if (!fieldId && (!profile?.priority_skills || profile.priority_skills.length === 0)) {
-        setLessons([])
-        return
-    }
-    
-    // If we have skills but no field matched (rare), default to fullstack or first match
-    if (!fieldId) fieldId = 'fullstack' 
+    if (!fieldId) fieldId = 'fullstack'
 
-    const field = getFieldById(fieldId)
-    const fieldSkills = field?.skills || profile?.priority_skills || []
-
-    // Fetch lessons matching priority skills
-    const { data: lessonsData } = await supabase
-      .from('lessons')
+    const { data: roadmap } = await supabase
+      .from('roadmaps')
       .select('*')
-      .in('skill_tag', fieldSkills)
-      .order('level', { ascending: true })
+      .eq('slug', fieldId)
+      .single()
 
-    // Fetch user progress
+    if (!roadmap) {
+      setLessons([])
+      setProgress({})
+      return
+    }
+
+    const { data: levelsData } = await supabase
+      .from('levels')
+      .select('*')
+      .eq('roadmap_id', roadmap.id)
+      .eq('is_active', true)
+      .order('level_no', { ascending: true })
+
     const { data: progressData } = await supabase
       .from('user_progress')
       .select('*')
       .eq('user_id', profile.id)
+      .eq('roadmap_id', roadmap.id)
 
     const progressMap: any = {}
     progressData?.forEach((p: any) => {
-      progressMap[p.lesson_id] = p
+      progressMap[p.level_no] = { completed: p.completed }
     })
 
-    setLessons(lessonsData || [])
+    setLessons(levelsData || [])
     setProgress(progressMap)
   }
 
@@ -173,49 +169,15 @@ export default function PriorityPage() {
           )}
         </motion.div>
 
-        {/* Progress Summary */}
+        {/* Lessons by Level (Gamified Map) */}
         {lessons.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="bg-white rounded-2xl shadow-md p-6 mb-8"
-          >
-            <h3 className="font-bold text-gray-800 mb-4">📊 Your Progress</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="text-center p-4 bg-blue-50 rounded-xl">
-                <div className="text-3xl font-bold text-blue-600">{lessons.length}</div>
-                <div className="text-sm text-gray-600">Total Lessons</div>
-              </div>
-              <div className="text-center p-4 bg-green-50 rounded-xl">
-                <div className="text-3xl font-bold text-green-600">
-                  {Object.values(progress).filter((p: any) => p.completed).length}
-                </div>
-                <div className="text-sm text-gray-600">Completed</div>
-              </div>
-              <div className="text-center p-4 bg-yellow-50 rounded-xl">
-                <div className="text-3xl font-bold text-yellow-600">
-                  {lessons.length - Object.values(progress).filter((p: any) => p.completed).length}
-                </div>
-                <div className="text-sm text-gray-600">Remaining</div>
-              </div>
-              <div className="text-center p-4 bg-purple-50 rounded-xl">
-                <div className="text-3xl font-bold text-purple-600">
-                  {Math.round((Object.values(progress).filter((p: any) => p.completed).length / lessons.length) * 100) || 0}%
-                </div>
-                <div className="text-sm text-gray-600">Progress</div>
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        {/* Lessons by Level */}
-        {lessons.length > 0 && (
-          <LevelMap 
-            lessons={lessons} 
-            progress={progress} 
-            onStartLesson={handleStartLesson} 
-          />
+          <div className="bg-white/50 backdrop-blur-sm rounded-3xl p-4 md:p-8 shadow-inner border border-white/60">
+             <LevelMap 
+               lessons={lessons} 
+               progress={progress} 
+               onStartLesson={handleStartLesson} 
+             />
+          </div>
         )}
 
         {/* Empty State */}

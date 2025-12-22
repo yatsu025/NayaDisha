@@ -12,15 +12,27 @@ function LessonContent() {
   const searchParams = useSearchParams()
   const mode = searchParams.get('mode') || 'theory'
   const [showEnglish, setShowEnglish] = useState(true)
+  const [userId, setUserId] = useState<string | null>(null)
+  const [level, setLevel] = useState<any>(null)
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    const checkUser = async () => {
+    const init = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
         router.push("/login")
+        return
       }
+      setUserId(user.id)
+      const levelId = params?.id as string
+      const { data: levelData } = await supabase
+        .from('levels')
+        .select('*')
+        .eq('id', levelId)
+        .single()
+      setLevel(levelData)
     }
-    checkUser()
+    init()
   }, [router])
 
   const lessonContent = {
@@ -87,13 +99,27 @@ fruits.remove("banana")`
       <main className="max-w-7xl mx-auto px-4 py-8">
         {mode === 'video' ? (
           <div className="bg-white rounded-2xl shadow-md p-8 flex flex-col items-center justify-center min-h-[400px]">
-            <h1 className="text-3xl font-bold text-gray-800 mb-6">{lessonContent.english.title} (Video Lesson)</h1>
-            <div className="w-full max-w-3xl aspect-video bg-gray-900 rounded-xl flex items-center justify-center relative group cursor-pointer">
-              <Play size={64} className="text-white opacity-80 group-hover:opacity-100 transition-opacity" />
-              <div className="absolute bottom-4 left-4 right-4 text-white text-sm bg-black/50 p-2 rounded">
-                Video playback is simulated for this demo.
+            <h1 className="text-3xl font-bold text-gray-800 mb-6">
+              {level ? `Level ${level.level_no}: ${level.title}` : 'Video Lesson'}
+            </h1>
+            {level?.video_url ? (
+              <div className="w-full max-w-3xl aspect-video bg-gray-900 rounded-xl overflow-hidden">
+                <iframe
+                  src={level.video_url}
+                  title={level.title}
+                  className="w-full h-full"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
               </div>
-            </div>
+            ) : (
+              <div className="w-full max-w-3xl aspect-video bg-gray-900 rounded-xl flex items-center justify-center relative group">
+                <Play size={64} className="text-white opacity-80 group-hover:opacity-100 transition-opacity" />
+                <div className="absolute bottom-4 left-4 right-4 text-white text-sm bg-black/50 p-2 rounded">
+                  No video available for this level.
+                </div>
+              </div>
+            )}
             <button 
               onClick={() => router.push(`/lesson/${params.id}?mode=theory`)}
               className="mt-8 bg-blue-600 text-white px-6 py-3 rounded-full font-bold hover:bg-blue-700 transition-colors"
@@ -109,9 +135,13 @@ fruits.remove("banana")`
               <h2 className="text-sm font-semibold text-gray-500 uppercase">English</h2>
               {showEnglish && <span className="text-[#2956D9]">●</span>}
             </div>
-            <h1 className="text-2xl font-bold text-gray-800 mb-6">{lessonContent.english.title}</h1>
+            <h1 className="text-2xl font-bold text-gray-800 mb-6">
+              {level ? `Level ${level.level_no}: ${level.title}` : content.title}
+            </h1>
             <div className="prose prose-sm max-w-none">
-              <pre className="whitespace-pre-wrap text-gray-700 font-sans">{lessonContent.english.content}</pre>
+              <pre className="whitespace-pre-wrap text-gray-700 font-sans">
+                {level?.theory_content || content.content}
+              </pre>
             </div>
           </div>
 
@@ -137,11 +167,25 @@ fruits.remove("banana")`
               ← Previous
             </button>
           </Link>
-          <Link href={`/quiz/${params.id}`}>
-            <button className="bg-[#FFC947] hover:bg-[#e6b33f] text-[#2956D9] font-bold px-6 py-3 rounded-lg transition-colors">
-              Take Quiz →
-            </button>
-          </Link>
+          <button
+            onClick={async () => {
+              if (!userId || !level) return
+              setSaving(true)
+              await supabase
+                .from('user_progress')
+                .upsert({
+                  user_id: userId,
+                  roadmap_id: level.roadmap_id,
+                  level_no: level.level_no,
+                  completed: true
+                }, { onConflict: 'user_id,roadmap_id,level_no' })
+              setSaving(false)
+              router.back()
+            }}
+            className="bg-[#2956D9] hover:bg-[#1a3a8a] text-white font-bold px-6 py-3 rounded-lg transition-colors"
+          >
+            {saving ? 'Saving...' : 'Mark as Completed'}
+          </button>
         </div>
       </main>
     </div>
