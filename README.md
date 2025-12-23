@@ -1,4 +1,4 @@
-# NayaDisha - Learning Platform for nontech student
+# NayaDisha - Learning Platform for nontech student and a tech student
 
 **Tagline:** "Har student ke future ko ek nayi disha."
 
