@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server"
-import { supabase } from "@/lib/supabaseClient"
+import { createClient } from "@supabase/supabase-js"
+
+const admin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+)
 
 function slugifyField(fieldName) {
   const base = (fieldName || "").toLowerCase()
@@ -92,6 +97,21 @@ IMPORTANT:
   }
 }
 
+async function syncToLessons(slug, levels) {
+  const lessonsToUpsert = levels.map(lv => ({
+    id: `${slug}-level-${lv.level_no}`,
+    title: lv.title,
+    english_content: lv.short_description || "Content coming soon...",
+    level: lv.level_no,
+    category: 'priority',
+    skill_tag: slug,
+    xp_reward: 100
+  }))
+  
+  const { error } = await supabase.from('lessons').upsert(lessonsToUpsert, { onConflict: 'id' })
+  if (error) console.error("Error syncing lessons:", error)
+}
+
 export async function POST(req) {
   try {
     const { field } = await req.json()
@@ -102,14 +122,14 @@ export async function POST(req) {
     const slug = slugifyField(field)
 
     // 1) If roadmap exists, return it with levels (max 15)
-    const { data: roadmap } = await supabase
+    const { data: roadmap } = await admin
       .from("roadmaps")
       .select("*")
       .eq("slug", slug)
       .single()
 
     if (roadmap) {
-      const { data: levels } = await supabase
+      const { data: levels } = await admin
         .from("levels")
         .select("level_no,title,short_description,is_active")
         .eq("roadmap_id", roadmap.id)
@@ -143,13 +163,13 @@ export async function POST(req) {
         ],
       }
       // Insert fallback into Supabase
-      const { data: newRoadmap } = await supabase
+      const { data: newRoadmap } = await admin
         .from("roadmaps")
         .insert({ slug, title: fallback.title })
         .select("*")
         .single()
       for (const lv of fallback.levels) {
-        await supabase
+        await admin
           .from("levels")
           .insert({
             roadmap_id: newRoadmap.id,
@@ -174,7 +194,7 @@ export async function POST(req) {
     aiJson.levels = (aiJson.levels || []).slice(0, 15)
 
     // 3) Insert into Supabase
-    const { data: createdRoadmap, error: roadmapErr } = await supabase
+    const { data: createdRoadmap, error: roadmapErr } = await admin
       .from("roadmaps")
       .insert({ slug, title: aiJson.title })
       .select("*")
@@ -185,7 +205,7 @@ export async function POST(req) {
     }
 
     for (const lv of aiJson.levels) {
-      await supabase
+      await admin
         .from("levels")
         .insert({
           roadmap_id: createdRoadmap.id,
@@ -196,6 +216,8 @@ export async function POST(req) {
           is_active: true,
         })
     }
+
+    await syncToLessons(slug, aiJson.levels)
 
     // Return the generated roadmap JSON
     return NextResponse.json(aiJson)

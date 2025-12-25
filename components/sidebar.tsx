@@ -11,7 +11,7 @@ export function Sidebar() {
 
   const navItems = [
     { href: "/dashboard", label: "Dashboard", icon: Home },
-    { href: "/career-path", label: "Career Path", icon: BookOpen },
+    { href: "/skill-path", label: "Skill Path", icon: BookOpen },
     { href: "/quiz", label: "Quiz", icon: Trophy },
     { href: "/mentor", label: "Mentor", icon: MessageSquare },
     { href: "/profile", label: "Profile", icon: User },

@@ -9,7 +9,6 @@ import { useUser } from "@/store/useUser"
 import Navbar from "@/components/Navbar"
 import XPProgressBar from "@/components/XPProgressBar"
 import { availableSkills } from "@/utils/skills"
-import { getFieldById, careerFields } from "@/utils/fields"
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -97,46 +96,22 @@ export default function DashboardPage() {
     )
   }
 
-  const getPriorityFieldName = () => {
-    const p = profile as any
-    if (p?.priority_field) return getFieldById(p.priority_field)?.name
-    
-    if (p?.priority_skills?.length > 0) {
-      const matched = careerFields.find(f => f.skills.every(s => p.priority_skills.includes(s)))
-      if (matched) return matched.name
-    }
-    
-    return "Career Path"
-  }
-
-  const getSecondaryFieldName = () => {
-    const p = profile as any
-    if (p?.secondary_field) return getFieldById(p.secondary_field)?.name
-    
-    if (p?.unpriority_skills?.length > 0) {
-      const matched = careerFields.find(f => f.skills.every(s => p.unpriority_skills.includes(s)))
-      if (matched) return matched.name
-    }
-    
-    return "Secondary Path"
-  }
-
   const sections = [
     {
-      title: "Career Path",
-      description: "Focus on your main goal",
+      title: "Priority Skills",
+      description: "Focus on mastering your priority skills",
       icon: "⭐",
       color: "from-blue-500 to-blue-600",
       href: "/priority",
-      stats: getPriorityFieldName()
+      stats: `${profile?.priority_skills?.length || 0} skills`
     },
     {
-      title: "Secondary Interest",
-      description: "Explore your future goals",
+      title: "Learn Later",
+      description: "Skills you want to explore next",
       icon: "📚",
       color: "from-purple-500 to-purple-600",
       href: "/unpriority",
-      stats: getSecondaryFieldName()
+      stats: `${profile?.unpriority_skills?.length || 0} skills`
     },
     {
       title: "Game Zone",
@@ -239,68 +214,50 @@ export default function DashboardPage() {
           </motion.div>
         </div>
 
-        {/* Career Focus Overview */}
+        {/* Skills Overview */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
           className="bg-white rounded-2xl shadow-md p-6 mb-8"
         >
-          <h3 className="text-xl font-bold text-gray-800 mb-4">🎯 Your Career Focus</h3>
+          <h3 className="text-xl font-bold text-gray-800 mb-4">🎯 Your Learning Focus</h3>
           <div className="grid md:grid-cols-2 gap-6">
-            <div className="bg-blue-50 rounded-xl p-4 border border-blue-100">
-              <h4 className="font-semibold text-blue-700 mb-2">Primary Career Path</h4>
-              {(() => {
-                const field = (profile as any)?.priority_field 
-                  ? getFieldById((profile as any).priority_field) 
-                  : null
-                
-                return field ? (
-                  <div>
-                    <div className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                      <span className="text-2xl">{field.icon}</span>
-                      {field.name}
-                    </div>
-                    <p className="text-sm text-gray-600 mt-1">{field.description}</p>
-                    <div className="mt-3 flex gap-2 flex-wrap">
-                       <span className="text-xs font-semibold bg-white px-2 py-1 rounded text-blue-600 border border-blue-200">
-                         {field.skills.length} Topics
-                       </span>
-                       <span className="text-xs font-semibold bg-white px-2 py-1 rounded text-blue-600 border border-blue-200">
-                         High Demand
-                       </span>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-gray-500 italic">No primary field selected.</p>
-                )
-              })()}
+            <div>
+              <h4 className="font-semibold text-blue-700 mb-2">Priority Skills ({profile?.priority_skills?.length || 0})</h4>
+              <div className="flex flex-wrap gap-2">
+                {(profile?.priority_skills || []).slice(0, 3).map((skillId: string) => {
+                  const skill = availableSkills.find(s => s.id === skillId)
+                  return skill ? (
+                    <span key={skillId} className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
+                      {skill.icon} {skill.name}
+                    </span>
+                  ) : null
+                })}
+                {(profile?.priority_skills?.length || 0) > 3 && (
+                  <span className="bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-sm">
+                    +{(profile?.priority_skills?.length || 0) - 3} more
+                  </span>
+                )}
+              </div>
             </div>
-            
-            <div className="bg-purple-50 rounded-xl p-4 border border-purple-100">
-              <h4 className="font-semibold text-purple-700 mb-2">Secondary Interest</h4>
-              {(() => {
-                const field = (profile as any)?.secondary_field 
-                  ? getFieldById((profile as any).secondary_field) 
-                  : null
-                
-                return field ? (
-                  <div>
-                    <div className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                      <span className="text-2xl">{field.icon}</span>
-                      {field.name}
-                    </div>
-                    <p className="text-sm text-gray-600 mt-1">{field.description}</p>
-                    <div className="mt-3 flex gap-2 flex-wrap">
-                       <span className="text-xs font-semibold bg-white px-2 py-1 rounded text-purple-600 border border-purple-200">
-                         Future Goal
-                       </span>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-gray-500 italic">No secondary field selected.</p>
-                )
-              })()}
+            <div>
+              <h4 className="font-semibold text-purple-700 mb-2">Learning Later ({profile?.unpriority_skills?.length || 0})</h4>
+              <div className="flex flex-wrap gap-2">
+                {(profile?.unpriority_skills || []).slice(0, 3).map((skillId: string) => {
+                  const skill = availableSkills.find(s => s.id === skillId)
+                  return skill ? (
+                    <span key={skillId} className="bg-purple-100 text-purple-800 px-3 py-1 rounded-full text-sm">
+                      {skill.icon} {skill.name}
+                    </span>
+                  ) : null
+                })}
+                {(profile?.unpriority_skills?.length || 0) > 3 && (
+                  <span className="bg-purple-50 text-purple-600 px-3 py-1 rounded-full text-sm">
+                    +{(profile?.unpriority_skills?.length || 0) - 3} more
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </motion.div>
@@ -343,7 +300,7 @@ export default function DashboardPage() {
         >
           <h3 className="text-xl font-bold text-gray-800 mb-4">🔥 Keep Learning!</h3>
           <p className="text-gray-600 mb-4">
-            You're making great progress! Continue with your priority field to unlock more badges and level up faster.
+            You're making great progress! Continue with your priority skills to unlock more badges and level up faster.
           </p>
           <Link href="/priority">
             <button className="bg-[#2956D9] hover:bg-[#1a3a8a] text-white font-bold px-6 py-3 rounded-full transition-colors">

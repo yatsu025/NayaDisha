@@ -21,7 +21,16 @@ export const availableSkills = [
 ]
 
 export function getSkillById(id) {
-  return availableSkills.find(skill => skill.id === id)
+  const found = availableSkills.find(skill => skill.id === id)
+  if (found) return found
+  
+  // Fallback for custom skills
+  return {
+    id: id,
+    name: id.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
+    icon: '✨',
+    category: 'custom'
+  }
 }
 
 export function getSkillsByIds(ids) {

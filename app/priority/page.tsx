@@ -6,13 +6,15 @@ import Link from "next/link"
 import { motion } from "framer-motion"
 import { supabase } from "@/lib/supabaseClient"
 import { useUser } from "@/store/useUser"
+import { useLanguage } from "@/store/useLanguage"
 import Navbar from "@/components/Navbar"
 import LevelMap from "@/components/LevelMap"
-import { careerFields, getFieldById } from "@/utils/fields"
+import { getSkillsByIds } from "@/utils/skills"
 
 export default function PriorityPage() {
   const router = useRouter()
   const { user, profile, fetchUser } = useUser()
+  const { language } = useLanguage()
   const [loading, setLoading] = useState(true)
   const [lessons, setLessons] = useState<any[]>([])
   const [progress, setProgress] = useState<any>({})
@@ -35,46 +37,57 @@ export default function PriorityPage() {
   }, [loading, user, profile, router])
 
   const fetchLessons = async () => {
-    let fieldId = (profile as any)?.priority_field
-    if (!fieldId && (profile as any)?.priority_skills?.length > 0) {
-        const matchedField = careerFields.find(f => 
-            f.skills.every(s => (profile as any).priority_skills.includes(s))
-        )
-        if (matchedField) fieldId = matchedField.id
-    }
-    if (!fieldId) fieldId = 'fullstack'
-
-    const { data: roadmap } = await supabase
-      .from('roadmaps')
-      .select('*')
-      .eq('slug', fieldId)
-      .single()
-
-    if (!roadmap) {
+    if (!profile?.priority_skills || profile.priority_skills.length === 0) {
       setLessons([])
-      setProgress({})
       return
     }
 
-    const { data: levelsData } = await supabase
-      .from('levels')
+    // Fetch lessons matching priority skills
+    const { data: lessonsData } = await supabase
+      .from('lessons')
       .select('*')
-      .eq('roadmap_id', roadmap.id)
-      .eq('is_active', true)
-      .order('level_no', { ascending: true })
+      .in('skill_tag', profile.priority_skills)
+      .order('level', { ascending: true })
 
+    const existingSkills = new Set(lessonsData?.map((l: any) => l.skill_tag) || [])
+    const missingSkills = profile.priority_skills.filter((skill: string) => !existingSkills.has(skill))
+
+    if (missingSkills.length > 0) {
+        // Generate roadmaps for missing skills
+        await Promise.all(missingSkills.map((skill: string) => 
+            fetch('/api/generate-roadmap', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ field: skill })
+            })
+        ))
+        
+        // Refetch lessons after generation
+        const { data: refreshedLessons } = await supabase
+            .from('lessons')
+            .select('*')
+            .in('skill_tag', profile.priority_skills)
+            .order('level', { ascending: true })
+            
+        setLessons(refreshedLessons || [])
+    } else {
+        setLessons(lessonsData || [])
+    }
+
+    // Fetch user progress
     const { data: progressData } = await supabase
       .from('user_progress')
       .select('*')
       .eq('user_id', profile.id)
-      .eq('roadmap_id', roadmap.id)
 
     const progressMap: any = {}
     progressData?.forEach((p: any) => {
-      progressMap[p.level_no] = { completed: p.completed }
+      progressMap[p.lesson_id] = p
     })
 
-    setLessons(levelsData || [])
+    if (missingSkills.length === 0) {
+        setLessons(lessonsData || [])
+    }
     setProgress(progressMap)
   }
 
@@ -90,17 +103,7 @@ export default function PriorityPage() {
     )
   }
 
-  const priorityField = (() => {
-      if (!profile) return null;
-      let fieldId = (profile as any).priority_field
-      if (!fieldId && (profile as any).priority_skills?.length > 0) {
-          const matchedField = careerFields.find(f => 
-              f.skills.every(s => (profile as any).priority_skills.includes(s))
-          )
-          if (matchedField) fieldId = matchedField.id
-      }
-      return getFieldById(fieldId || 'fullstack')
-  })()
+  const prioritySkills = getSkillsByIds(profile?.priority_skills || [])
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -114,14 +117,14 @@ export default function PriorityPage() {
           className="mb-8"
         >
           <h1 className="text-4xl font-bold text-gray-800 mb-2">
-            ⭐ Priority Field
+            ⭐ Priority Skills
           </h1>
           <p className="text-gray-600 text-lg">
-            Master your career path to achieve your goals
+            Master these skills to achieve your learning goals
           </p>
         </motion.div>
 
-        {/* Selected Field & Language Info */}
+        {/* Selected Skills & Language Info */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -130,16 +133,23 @@ export default function PriorityPage() {
         >
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
             <div>
-              <h3 className="font-bold text-gray-800 mb-2">🎯 Your Career Path:</h3>
-               {priorityField ? (
-                <div className="flex items-center gap-3 bg-blue-100 border-2 border-blue-300 px-4 py-2 rounded-full shadow-sm">
-                  <span className="text-2xl">{priorityField.icon}</span>
-                  <span className="font-semibold text-gray-800">{priorityField.name}</span>
-                  <span className="text-blue-600">⭐</span>
-                </div>
-              ) : (
-                 <p className="text-gray-500">No priority field selected yet</p>
-              )}
+              <h3 className="font-bold text-gray-800 mb-2">🎯 Your Priority Skills:</h3>
+              <div className="flex flex-wrap gap-3">
+                {prioritySkills.length > 0 ? (
+                  prioritySkills.map((skill: any) => (
+                    <div
+                      key={skill.id}
+                      className="flex items-center gap-2 bg-blue-100 border-2 border-blue-300 px-4 py-2 rounded-full shadow-sm"
+                    >
+                      <span className="text-2xl">{skill.icon}</span>
+                      <span className="font-semibold text-gray-800">{skill.name}</span>
+                      <span className="text-blue-600">⭐</span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-gray-500">No priority skills selected yet</p>
+                )}
+              </div>
             </div>
             <div className="bg-white rounded-xl px-4 py-3 shadow-sm border-2 border-purple-200">
               <div className="text-sm text-gray-600 mb-1">Learning in:</div>
@@ -159,25 +169,59 @@ export default function PriorityPage() {
             </div>
           </div>
           
-          {!priorityField && (
+          {prioritySkills.length === 0 && (
             <div className="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-4 mt-4">
               <p className="text-yellow-800">
-                ⚠️ <strong>No priority field selected!</strong> Go to your{' '}
-                <Link href="/profile" className="underline font-bold">profile</Link> to select a career path.
+                ⚠️ <strong>No priority skills selected!</strong> Go to your{' '}
+                <Link href="/profile" className="underline font-bold">profile</Link> to select skills you want to focus on.
               </p>
             </div>
           )}
         </motion.div>
 
-        {/* Lessons by Level (Gamified Map) */}
+        {/* Progress Summary */}
         {lessons.length > 0 && (
-          <div className="bg-white/50 backdrop-blur-sm rounded-3xl p-4 md:p-8 shadow-inner border border-white/60">
-             <LevelMap 
-               lessons={lessons} 
-               progress={progress} 
-               onStartLesson={handleStartLesson} 
-             />
-          </div>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="bg-white rounded-2xl shadow-md p-6 mb-8"
+          >
+            <h3 className="font-bold text-gray-800 mb-4">📊 Your Progress</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="text-center p-4 bg-blue-50 rounded-xl">
+                <div className="text-3xl font-bold text-blue-600">{lessons.length}</div>
+                <div className="text-sm text-gray-600">Total Lessons</div>
+              </div>
+              <div className="text-center p-4 bg-green-50 rounded-xl">
+                <div className="text-3xl font-bold text-green-600">
+                  {Object.values(progress).filter((p: any) => p.completed).length}
+                </div>
+                <div className="text-sm text-gray-600">Completed</div>
+              </div>
+              <div className="text-center p-4 bg-yellow-50 rounded-xl">
+                <div className="text-3xl font-bold text-yellow-600">
+                  {lessons.length - Object.values(progress).filter((p: any) => p.completed).length}
+                </div>
+                <div className="text-sm text-gray-600">Remaining</div>
+              </div>
+              <div className="text-center p-4 bg-purple-50 rounded-xl">
+                <div className="text-3xl font-bold text-purple-600">
+                  {Math.round((Object.values(progress).filter((p: any) => p.completed).length / lessons.length) * 100) || 0}%
+                </div>
+                <div className="text-sm text-gray-600">Progress</div>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* Lessons by Level */}
+        {lessons.length > 0 && (
+          <LevelMap 
+            lessons={lessons} 
+            progress={progress} 
+            onStartLesson={handleStartLesson} 
+          />
         )}
 
         {/* Empty State */}
@@ -192,7 +236,7 @@ export default function PriorityPage() {
               No lessons available yet
             </h3>
             <p className="text-gray-600">
-              We're adding more content for your priority field. Check back soon!
+              We're adding more content for your priority skills. Check back soon!
             </p>
           </motion.div>
         )}

@@ -40,7 +40,7 @@ export default function LandingPage() {
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => router.push("/login")}
+            onClick={() => router.push("/choose-language")}
             className="bg-[#FFC947] hover:bg-[#e6b33f] text-[#2956D9] font-bold text-2xl px-16 py-5 rounded-full transition-colors shadow-2xl"
           >
             Get Started →
