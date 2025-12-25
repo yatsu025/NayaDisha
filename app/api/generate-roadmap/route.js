@@ -217,7 +217,7 @@ export async function POST(req) {
         })
     }
 
-    await syncToLessons(slug, aiJson.levels)
+    await syncToLessons(admin, slug, aiJson.levels)
 
     // Return the generated roadmap JSON
     return NextResponse.json(aiJson)
